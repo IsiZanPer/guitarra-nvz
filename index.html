@@ -2125,7 +2125,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.62';
+const VERSION = '2.63';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -4977,11 +4977,16 @@ function restaurarCopiaMenu() {
 
 async function restaurarCopia(files) {
   if (!files || !files.length) return;
+  /* v2.63-arreglo: HAY QUE PILLAR el fichero ANTES de vaciar el campo.
+     Vaciar input.value primero invalidaba lo elegido y FileReader se
+     quedaba capacitado sin nada (restauración muda en navegador y en el
+     programa: era el famoso "fichero manco"). Lo correcto: capturar ya. */
+  const fichero = files[0];
   const input = document.getElementById('restaurar-copia');
   input.value = '';   /* permite repetir el mismo archivo si falla */
   const fr = new FileReader();
   fr.onload = async () => { restaurarDesdeTexto(String(fr.result), false); };
-  fr.readAsText(files[0]);
+  fr.readAsText(fichero);
 }
 
 /* v2.61: aplicar la copia, separado del leer el fichero. Así el programa de
