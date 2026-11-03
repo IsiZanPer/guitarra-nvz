@@ -1713,6 +1713,78 @@
     transition: width 0.15s ease;
   }
   .restaura-nota { font-size: 12px; color: var(--texto-suave); margin-top: 8px; }
+
+  /* ============================================================
+     MODO CONCIERTO (v2.64) — la letra GIGANTE: fuera barra y
+     cortinas; #letra llena la pantalla con letra agrandada
+     (multiplicador var --zoom-concierto, se recuerda), una sola
+     columna (leer de un tirón) y mandos flotantes abajo que
+     desaparecen al estar quietos y vuelven al tocar la pantalla.
+     ============================================================ */
+  body.modo-concierto header,
+  body.modo-concierto #biblioteca,
+  body.modo-concierto #diagramas,
+  body.modo-concierto #barra-mp3,
+  body.modo-concierto #barra-scroll,
+  body.modo-concierto #btn-zoom,
+  body.modo-concierto #btn-zoom-menos { display: none; }
+  body.modo-concierto #letra {
+    position: fixed; inset: 0; z-index: 500;
+    font-size: calc(var(--tamano-letra) * var(--zoom-concierto, 2.2));
+    /* v2.64-remate 2: NO column-count fijo — con la caja cerrada (inset:0)
+       un multicol PAGINA HACIA LA DERECHA (invisible). auto = flujo de
+       bloque normal: la letra baja SIEMPRE por la vertical */
+    column-count: auto !important;
+    column-gap: normal !important;
+    background: var(--fondo);
+  }
+  /* v2.64-remate: el MODO APAISADO desvía sus columnas al CUERPO de la
+     canción y bloquea el scroll vertical — en concierto mandamos SIEMPRE
+     hacia abajo (teleprompter), una sola columna y alto libre */
+  body.modo-concierto #letra.apaisado {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-behavior: auto;
+  }
+  body.modo-concierto #letra.apaisado .cuerpo-cancion {
+    /* NOTA: el apaisado fija la altura por JS como estilo inline; el
+       !important es lo que hace que el concierto le gane */
+    height: auto !important;
+    column-count: 1 !important;
+    column-gap: 0 !important;
+    column-rule: none !important;
+  }
+  /* v2.42: las etiquetas de PARTE (verso/estribillo) a lo grande también */
+  body.modo-concierto #letra .linea-parte { letter-spacing: 1px; }
+  /* los mandos flotantes del concierto */
+  #barra-concierto {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 900; display: flex; align-items: center; gap: 6px;
+    padding: 8px 10px; border-radius: 999px;
+    background: var(--panel-vidrio);
+    backdrop-filter: blur(22px) saturate(140%);
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    border: 1px solid var(--borde); box-shadow: var(--sombra);
+    opacity: 0; pointer-events: none; transition: opacity .25s ease;
+  }
+  #barra-concierto.visible { opacity: 1; pointer-events: auto; }
+  #zoom-concierto-info {
+    font-size: 12px; color: var(--texto-suave); min-width: 44px; text-align: center;
+  }
+
+  /* ============================================================
+     MODO LETRA (v2.65) — sólo la LETRA: se VAN los acordes
+     flotantes (.acorde/.acordeSol) y las líneas que son SOLO
+     acordes (.linea-acordes-solo), y cada línea deja de reservar
+     el hueco de arriba para la franja de acordes. Se quedan la
+     letra, las ETIQUETAS de sección (verso/estribillo…) y las
+     tablaturas. Se activa en 🎛 Vista y se recuerda.
+     ============================================================ */
+  #letra.solo-letra .acorde,
+  #letra.solo-letra .acordeSol { display: none; }
+  #letra.solo-letra .linea { padding-top: 0; }
+  #letra.solo-letra .linea-acordes-solo { display: none; }
+  #barra-concierto .btn.letra-on { color: var(--acento); }
 </style>
 </head>
 <body>
@@ -1738,6 +1810,9 @@
   <!-- v2.53: metrónomo: clic a un tempo ajustable para practicar -->
   <button class="btn" onclick="metronomoAbrir()" title="Metrónomo: clic a un tempo ajustable (con acento en el compás)">🥁 Metrónomo</button>
 
+  <!-- v2.64: modo concierto — la letra GIGANTE para tocar sin tocar teclas -->
+  <button class="btn" id="btn-concierto" onclick="alternarConcierto()" title="🎭 Modo concierto: la letra llena la pantalla (bien grande, con auto-scroll; salir con Escape)">🎭 Concierto</button>
+
   <!-- Preset de Bias FX2 detectado por MIDI (v2.8). Clic abre el panel -->
   <span class="chip" id="chip-midi" onclick="abrirEditorMidi()" title="Conectar la escucha MIDI">⚡ MIDI: apagado</span>
 
@@ -1750,12 +1825,16 @@
       <button class="menu-item" id="menu-col-1" onclick="ponerColumnas(1); refrescarMenuVista(); cerrarMenu()">◫ &nbsp;una columna</button>
       <button class="menu-item" id="menu-col-2" onclick="ponerColumnas(2); refrescarMenuVista(); cerrarMenu()">◫◫ &nbsp;dos columnas</button>
       <button class="menu-item" id="menu-col-3" onclick="ponerColumnas(3); refrescarMenuVista(); cerrarMenu()">◫◫◫ &nbsp;tres columnas</button>
+      <div class="menu-seccion">Letra / acordes (v2.65)</div>
+      <button class="menu-item" id="menu-solo-letra" onclick="alternarSoloLetra(); cerrarMenu()">♪ &nbsp;letra sola (sin acordes)</button>
       <div class="menu-seccion">Colores y partes</div>
       <button class="menu-item" onclick="abrirEditorPartes()">🎨 Estilo de etiquetas y partes…</button>
       <div class="menu-seccion">Texto</div>
       <button class="menu-item" onclick="abrirEditorTamanios()">🖋 Fuente y tamaños de texto…</button>
       <div class="menu-seccion">Aspecto</div>
       <button class="menu-item" onclick="alternarTema(); cerrarMenu()">◐ &nbsp;modo claro / oscuro</button>
+      <div class="menu-seccion">Concierto (v2.64)</div>
+      <button class="menu-item" onclick="conciertoAbrir(); cerrarMenu()">🎭 &nbsp;Modo concierto — letra GIGANTE</button>
       <div class="menu-seccion">Atajos</div>
       <button class="menu-item" onclick="atajosAbrir(); cerrarMenu()">⌨ &nbsp;Atajos de teclado…</button>
       <div class="menu-seccion">Copia de seguridad (v2.51)</div>
@@ -1884,6 +1963,17 @@
     <div id="cuadros-chords"></div>
   </aside>
 </main>
+
+<!-- ===== MODO CONCIERTO (v2.64): mandos flotantes gigantes ===== -->
+<div id="barra-concierto">
+  <button class="btn" onclick="conciertoZoom(-0.25)" title="Letra menos grande">A−</button>
+  <span id="zoom-concierto-info">×2.2</span>
+  <button class="btn" onclick="conciertoZoom(0.25)" title="Letra MÁS grande">A+</button>
+  <button class="btn" id="btn-concierto-scroll" onclick="alternarScroll()" title="Auto-scroll: la letra avanza sola (los mismo controles de siempre)">▶</button>
+  <button class="btn" id="btn-concierto-letra" onclick="alternarSoloLetra()" title="Letra sola: quita los acordes y deja solo la letra (v2.65)">♪</button>
+  <button class="btn" onclick="pantallaCompleta()" title="Pantalla completa (también F11)">🖼</button>
+  <button class="btn" onclick="conciertoSalir()" title="Salir del modo concierto (o pulsa Escape)">✕</button>
+</div>
 
 <!-- ===== Editor de canciones (ventana flotante) ===== -->
 <div id="editor-mascara">
@@ -2125,7 +2215,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.63';
+const VERSION = '2.65';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -5282,15 +5372,19 @@ function alternarScroll() {
   const zona = document.getElementById('letra');
   const barra = document.getElementById('barra-scroll');
   const boton = document.getElementById('btn-scroll');
+  /* v2.64: el mando 🎭 del modo concierto lleva su propio botón ▶/⏸ */
+  const botonConcierto = document.getElementById('btn-concierto-scroll');
   if (scrollActivo) {
     clearInterval(tickScroll); scrollActivo = false;
     barra.classList.remove('activo');
     boton.textContent = '▶ Auto-scroll';
+    if (botonConcierto) botonConcierto.textContent = '▶';
   } else {
     scrollActivo = true;
     barra.classList.add('activo');
     mostrarVelocidad();
     boton.textContent = '⏸ Auto-scroll';
+    if (botonConcierto) botonConcierto.textContent = '⏸';
     tickScroll = setInterval(moverLectura, velocidadScroll);
   }
 }
@@ -5302,6 +5396,110 @@ function cambiarVelocidad(n) {
   if (scrollActivo) { clearInterval(tickScroll); tickScroll = setInterval(moverLectura, velocidadScroll); }
   mostrarVelocidad();
 }
+
+/* ============================================================
+   MODO CONCIERTO (v2.64) — la letra GIGANTE para tocar sin
+   tocar teclas: la letra llena toda la pantalla (se esconden
+   barra, biblioteca y diagramas), el texto crece (A−/A+ en los
+   mandos que aparecen al tocar la pantalla), y el auto-scroll
+   de toda la vida sigue funcionando igual. Se recuerda el
+   tamaño elegido en el navegador para siempre.
+   Salir: botón ✕ (o Escape si ya no está a pantalla completa)
+   ============================================================ */
+const CLAVE_CONCIERTO = 'guitarra-nvz-concierto';   /* × de letra guardado */
+let zoomConcierto = (() => {
+  try {
+    const v = parseFloat(localStorage.getItem(CLAVE_CONCIERTO));
+    return (v && v >= 1.1 && v <= 6) ? v : 2.2;
+  } catch (e) { return 2.2; }
+})();
+let conciertoEnMarcha = false, relojBarraConcierto = null;
+
+function pintarZoomConcierto() {
+  document.documentElement.style.setProperty('--zoom-concierto', zoomConcierto);
+  const info = document.getElementById('zoom-concierto-info');
+  if (info) info.textContent = '×' + Number(zoomConcierto.toFixed(2));
+  try { localStorage.setItem(CLAVE_CONCIERTO, String(zoomConcierto)); } catch (e) { /* nada */ }
+}
+
+function conciertoZoom(delta) {
+  const antes = zoomConcierto;
+  zoomConcierto = Math.min(6, Math.max(1.1, zoomConcierto + delta));
+  if (zoomConcierto !== antes) pintarZoomConcierto();
+}
+
+/* Entrar: modo pantalla-llena de #letra (las cortinas quedan tapadas
+   igualmente pero las cierro por orden) */
+function conciertoAbrir() {
+  if (conciertoEnMarcha) return;
+  conciertoEnMarcha = true;
+  cerrarCortinas();          /* por si entró con la biblioteca abierta */
+  document.body.classList.add('modo-concierto');
+  const zona = document.getElementById('letra');
+  zona.scrollTop = 0;
+  pintarZoomConcierto();
+  conciertoMostrarBarra();
+}
+
+function conciertoSalir() {
+  if (!conciertoEnMarcha) return;
+  conciertoEnMarcha = false;
+  if (scrollActivo) alternarScroll();     /* al salir, el auto-scroll también para */
+  restaurarPantalla();                    /* si estaba a pantalla completa, sale */
+  document.body.classList.remove('modo-concierto');
+  clearTimeout(relojBarraConcierto);
+}
+
+function alternarConcierto() { conciertoEnMarcha ? conciertoSalir() : conciertoAbrir(); }
+
+/* Los mandos flotantes se VAN al estar quietos y VUELVEN al tocar
+   la pantalla (mover el dedo o ratón, o tocar) */
+function conciertoMostrarBarra() {
+  const b = document.getElementById('barra-concierto');
+  if (!b) return;
+  b.classList.add('visible');
+  clearTimeout(relojBarraConcierto);
+  relojBarraConcierto = setTimeout(() => b.classList.remove('visible'), 3500);
+}
+document.addEventListener('pointermove', () => {
+  if (conciertoEnMarcha) conciertoMostrarBarra();
+});
+document.addEventListener('pointerdown', () => {
+  if (conciertoEnMarcha) conciertoMostrarBarra();
+});
+
+/* ============================================================
+   MODO LETRA (v2.65) — sólo la LETRA, sin acordes: los acordes
+   flotantes y las líneas de solo acordes se esconden con la clase
+   solo-letra en #letra (el CSS de hace el trabajo), y las líneas
+   dejan de reservar el hueco de la franja de acordes. Se queda
+   TODO lo demás: letra, ETIQUETAS (verso/estribillo…) y
+   tabulaturas. La elección se recuerda en el navegador.
+   Con ⇄ de los mandos del concierto sirve igual (botón ♪).
+   ============================================================ */
+const CLAVE_SOLOLETRA = 'guitarra-nvz-solo-letra';
+let soloLetra = false;
+try { soloLetra = localStorage.getItem(CLAVE_SOLOLETRA) === '1'; } catch (e) { soloLetra = false; }
+
+function ponerSoloLetra(on) {
+  soloLetra = !!on;
+  const zona = document.getElementById('letra');
+  if (zona) zona.classList.toggle('solo-letra', soloLetra);
+  const btn = document.getElementById('menu-solo-letra');
+  if (btn) btn.textContent = soloLetra ? '✓ letra sola (sin acordes)' : '♪ letra sola (sin acordes)';
+  const btnC = document.getElementById('btn-concierto-letra');
+  if (btnC) btnC.classList.toggle('letra-on', soloLetra);
+  try { localStorage.setItem(CLAVE_SOLOLETRA, soloLetra ? '1' : '0'); } catch (e) { /* nada */ }
+  requestAnimationFrame(ajustarLineasLargas);   /* las líneas encajan sin la franja de acordes */
+}
+
+function alternarSoloLetra() { ponerSoloLetra(!soloLetra); }
+
+/* aplicar al arrancar por si quedó recordado de antes */
+if (soloLetra) ponerSoloLetra(true);
+
+
+
 
 /* Click en un acorde (en la letra o en un diagrama):
    lo destaca en los dos sitios para saber dónde estás */
@@ -7059,7 +7257,12 @@ function canciónSiguiente(d) {
 /* ---------- Flechas →/← en modo APAISADO (v2.1, roles v2.34) ----------
    →/← avanzan y retroceden una PANTALLA de letra (la canción SIGUE
    siendo la misma). El cambio de canción es cosa de ↓/↑ — siempre. */
-function esApaisado() { return columnasActuales === 'auto'; }
+function esApaisado() {
+  /* v2.64: en modo concierto SIEMPRE se desplaza hacia abajo
+     (teleprompter gigante), aunque la vista de antes fuera apaisada */
+  if (conciertoEnMarcha) return false;
+  return columnasActuales === 'auto';
+}
 
 function avanzarPantalla(d) {
   const zona = document.getElementById('letra');
@@ -7090,6 +7293,9 @@ document.addEventListener('keydown', (ev) => {
   const editorCerrado = !$editorMascara().classList.contains('abierto');
   const edListaAbierto = $edListaMascara().classList.contains('abierto');
   if (ev.key === 'Escape') {
+    /* v2.64: en modo concierto, el PRIMER Escape sale de pantalla
+       completa (lo hace el navegador) y el segundo sale del concierto */
+    if (conciertoEnMarcha) { if (!document.fullscreenElement) conciertoSalir(); return; }
     if (edListaAbierto) { cerrarEditorLista(); return; }   /* cierra sin guardar */
     if (document.getElementById('ed-partes-mascara').classList.contains('abierto')) { cerrarEditorPartes(); return; }
     if (document.getElementById('ed-tamanios-mascara').classList.contains('abierto')) { cerrarEditorTamanios(); return; }
