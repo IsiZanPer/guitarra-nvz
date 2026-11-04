@@ -488,6 +488,17 @@
     font-size: var(--tam-artista, 15px);
     font-family: var(--fuente-head, inherit);
   }
+  /* v2.70: la tarjeta de una ficha Guitar Pro */
+  #letra .ficha-gp {
+    margin: 26px auto 0;
+    max-width: 460px;
+    text-align: center;
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    padding: 26px 20px;
+  }
+  #letra .ficha-gp .grande { font-size: 44px; }
+  #letra .ficha-gp p { color: var(--texto-suave); margin: 8px 0 14px; font-size: 14px; }
 
   /* Modos de columnas (útiles con la tableta en apaisado) */
   #letra.columnas-2 {
@@ -866,7 +877,7 @@
     display: none;
     align-items: center;
     justify-content: center;
-    padding: 18px;
+    padding: 0;   /* v2.66: el editor va a FULL, sin marco */
   }
   #editor-mascara.abierto { display: flex; }
 
@@ -1480,6 +1491,12 @@
   .fila-ed small { color: var(--texto-suave); font-size: 11px; }
   .fila-ed .pos { font-size: 11px; color: var(--texto-suave); min-width: 16px; text-align: right; }
 
+  /* v2.71: flechas ⬆/⬇ para subir/bajar la canción de puesto
+     sin tener que arrastrar (en la tablet, una pena de dedo) */
+  .fila-ed .mover { display: inline-flex; gap: 3px; }
+  .fila-ed .mover .btn { padding: 1px 6px; font-size: 12px; line-height: 1.2; min-width: 26px; }
+  .fila-ed .mover .btn:disabled { opacity: 0.3; cursor: default; }
+
   /* Agarradera ⠿: indica que la fila se puede arrastrar */
   .agarradera {
     cursor: grab;
@@ -1532,15 +1549,21 @@
     #ed-lista-panel { width: 98vw; height: 92vh; }
   }
   #editor-panel {
+    /* v2.66: editor a PANTALLA COMPLETA — antes era una ventanita de
+       780px centrada; ahora llena la ventana y se reparte en DOS
+       partes: a la IZQUIERDA se edita (todo lo de siempre) y a la
+       DERECHA hay una VISTA PREVIA en vivo (una sola columna,
+       vertical, como la tableta). Reparto ~65% / 35% */
     background: var(--panel);
-    border: 1px solid var(--borde);
-    border-radius: 14px;
-    width: min(780px, 96vw);
-    max-height: 92vh;
+    border: none;
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    max-height: none;
     display: flex;
     flex-direction: column;
-    padding: 16px 18px;
-    overflow-y: auto;   /* v2.35: si estiras la letra más que el panel, hace scroll */
+    padding: 10px 14px;
+    overflow: hidden;   /* v2.66: el scroll vive DENTRO de cada columna */
   }
   #editor-cabecera {
     display: flex;
@@ -1567,7 +1590,7 @@
        el tirador la agranda/encoge de verdad; si crece más que el
        panel, el panel hace scroll y todo sigue a mano */
     flex: none;
-    height: min(46vh, 500px);
+    height: min(54vh, 680px);   /* v2.66: a full hay sitio de sobra (antes 46vh/500px) */
     min-height: 180px;
     width: 100%;
     background: var(--fondo);
@@ -1616,6 +1639,76 @@
     line-height: 1.5;
   }
   #editor-botones { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* ============================================================
+     v2.66 · EDITOR A FULL CON VISTA PREVIA — dos columnas:
+     IZQUIERDA (65%): el editor de toda la vida. DERECHA (35%):
+     la vista previa PINTADA EN VIVO a UNA sola columna (vertical,
+     como la tableta) con el mismo vestido que la canción:
+     fuentes, colores, etiquetas de sección, acordes, tabulaturas
+     y ajuste de acordes que se pisan
+     ============================================================ */
+  #editor-cuerpo {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+    gap: 14px;
+  }
+  #editor-izquierda {
+    min-width: 0;
+    overflow-y: auto;
+    padding-right: 6px;
+    display: flex;
+    flex-direction: column;
+  }
+  #editor-vista {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--fondo-lectura, transparent);
+  }
+  #editor-vista-cab {
+    flex: none;
+    font-size: 12px;
+    color: var(--texto-suave);
+    letter-spacing: .5px;
+    padding: 7px 12px 6px;
+    border-bottom: 1px solid var(--borde);
+  }
+  #ed-vista-letra {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 20px 40px;
+    font-family: var(--fuente-letra, "Segoe UI", system-ui, sans-serif);
+    font-size: var(--tamano-letra);
+    line-height: 1.45;
+    color: var(--texto-lectura, var(--texto));
+    background: var(--fondo-lectura, transparent);
+  }
+  /* la preview USA las mismas clases que la canción (.cabeza-cancion,
+     .linea, .acorde, .etiqueta-seccion…): aquí sólo se sueltan los
+     adornos de banda completa que sólo van bien dentro de #letra */
+  #ed-vista-letra .cabeza-cancion { margin: 0 0 16px; padding: 0; background: none; }
+  #ed-vista-letra .cabeza-cancion h2 {
+    margin: 0 0 4px;
+    font-size: var(--tam-titulo, 26px);
+    font-family: var(--fuente-head, inherit);
+    line-height: 1.15;
+  }
+  #ed-vista-letra .cabeza-cancion .artista {
+    margin: 0;
+    color: var(--texto-suave);
+    font-size: var(--tam-artista, 15px);
+    font-family: var(--fuente-head, inherit);
+  }
+  /* tableta / pantallas estrechas: el editor ENCIMA y la preview debajo */
+  @media (max-width: 760px) {
+    #editor-cuerpo { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1.3fr) minmax(0, 1fr); }
+  }
   .btn.positiva { border-color: var(--acorde); }
   .btn.roja { border-color: #e5484d; color: #e5484d; }
 
@@ -1978,6 +2071,9 @@
 <!-- ===== Editor de canciones (ventana flotante) ===== -->
 <div id="editor-mascara">
   <div id="editor-panel">
+    <!-- v2.66: DOS COLUMNAS — izquierda se edita, derecha la vista previa -->
+    <div id="editor-cuerpo">
+  <div id="editor-izquierda">
     <div id="editor-cabecera">
       <h3 id="editor-titulo-modal">Editor de canción</h3>
       <button class="btn" onclick="cerrarEditor()" title="Cerrar sin guardar">✕</button>
@@ -2016,7 +2112,15 @@
       <button class="btn" onclick="cerrarEditor()">Cancelar</button>
       <button class="btn roja" id="btn-editor-eliminar" onclick="eliminarDesdeEditor()" style="display:none">🗑 Eliminar</button>
     </div>
+  </div>   <!-- /editor-izquierda -->
+
+  <!-- ===== v2.66: VISTA PREVIA en vivo (una columna, vertical) ===== -->
+  <div id="editor-vista">
+    <div id="editor-vista-cab">👀 Vista previa — cómo quedará al guardar</div>
+    <div id="ed-vista-letra"></div>
   </div>
+    </div>   <!-- /editor-cuerpo -->
+</div>
 </div>
 
 <!-- ===== Visor de TABLATURA Guitar Pro (v2.44) =====
@@ -2215,7 +2319,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.65';
+const VERSION = '2.72';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -2256,6 +2360,9 @@ function transportarAcorde(acorde, n) {
    Cada acorde puede tener VARIAS digitaciones (lista de formas);
    la índice 0 es la de por vida; el músico puede elegir otra al
    hacer clic en el acorde y queda guardada en la canción.
+   v2.68: los acordes que solo tenían UNA forma ya tienen SEGUNDA
+   (sostenidos/bemoles, menores con cejilla, séptimas y maj7,
+   menores7 y suspendidos — siempre forma A/E alternada y real)
    ============================================================ */
 const DIGITACIONES = {
   // Mayores (los dos primeros tonos con digitación alternativa)
@@ -2273,11 +2380,16 @@ const DIGITACIONES = {
                                                              la misma de Cej=3 pero aflorada arriba) */ ],
   'G':  [ { base:0, trastes:['3','2','0','0','0','3'] },
           { base:3, trastes:['3','5','5','4','3','3'] } ],
-  'C#': [ { base:4, trastes:['x','4','6','6','6','4'] } ],
-  'A#': [ { base:1, trastes:['x','1','3','3','3','1'] } ],
-  'D#': [ { base:6, trastes:['x','6','8','8','8','6'] } ],
-  'F#': [ { base:2, trastes:['2','4','4','3','2','2'] } ],
-  'G#': [ { base:4, trastes:['4','6','6','5','4','4'] } ],
+  'C#': [ { base:4, trastes:['x','4','6','6','6','4'] },   /* cejilla 4 (forma A) */
+          { base:9, trastes:['9','11','11','10','9','9'] } ], /* v2.68: cejilla 9 (forma E) */
+  'A#': [ { base:1, trastes:['x','1','3','3','3','1'] },   /* cejilla 1 (forma A) */
+          { base:6, trastes:['6','8','8','7','6','6'] } ], /* v2.68: cejilla 6 (forma E) */
+  'D#': [ { base:6, trastes:['x','6','8','8','8','6'] },   /* cejilla 6 (forma A) */
+          { base:11, trastes:['11','13','13','12','11','11'] } ], /* v2.68: cejilla 11 (forma E) */
+  'F#': [ { base:2, trastes:['2','4','4','3','2','2'] },   /* cejilla 2 (forma E) */
+          { base:9, trastes:['x','9','11','11','11','9'] } ], /* v2.68: cejilla 9 (forma A) */
+  'G#': [ { base:4, trastes:['4','6','6','5','4','4'] },   /* cejilla 4 (forma E) */
+          { base:11, trastes:['x','11','13','13','13','11'] } ], /* v2.68: cejilla 11 (forma A) */
   'B':  [ { base:2, trastes:['x','2','4','4','4','2'] },     /* cejilla 2 */
           { base:7, trastes:['7','9','9','8','7','7'] } ],  /* cejilla 7 */
   // Menores
@@ -2285,7 +2397,8 @@ const DIGITACIONES = {
           { base:5, trastes:['5','7','7','5','5','5'] } ],
   'Bm': [ { base:2, trastes:['x','2','4','4','3','2'] },     /* cejilla 2 */
           { base:7, trastes:['7','9','9','7','7','7'] } ],  /* cejilla 7 */
-  'Cm': [ { base:3, trastes:['x','3','5','5','4','3'] } ],
+  'Cm': [ { base:3, trastes:['x','3','5','5','4','3'] },    /* cejilla 3 (forma A) */
+          { base:8, trastes:['8','10','10','8','8','8'] } ], /* v2.68: cejilla 8 (forma E) */
   'Dm': [ { base:0, trastes:['x','x','0','2','3','1'] },
           { base:5, trastes:['x','5','7','7','6','5'] } ],
   'Em': [ { base:0, trastes:['0','2','2','0','0','0'] },
@@ -2293,17 +2406,27 @@ const DIGITACIONES = {
           { base:7, trastes:['7','9','9','7','7','7'] } ],
   'F#m':[ { base:2, trastes:['2','4','4','2','2','2'] },     /* cejilla 2 */
           { base:9, trastes:['9','11','11','10','9','9'] } ],
-  'Gm': [ { base:3, trastes:['3','5','5','3','3','3'] } ],
-  'A#m':[ { base:1, trastes:['x','1','3','3','2','1'] } ],
-  'C#m':[ { base:4, trastes:['x','4','6','6','5','4'] } ],
-  'D#m':[ { base:6, trastes:['x','6','8','8','7','6'] } ],
-  'G#m':[ { base:4, trastes:['4','6','6','4','4','4'] } ],
+  'Gm': [ { base:3, trastes:['3','5','5','3','3','3'] },    /* cejilla 3 (forma E) */
+          { base:10, trastes:['x','10','12','12','11','10'] } ], /* v2.68: cejilla 10 (forma A) */
+  'A#m':[ { base:1, trastes:['x','1','3','3','2','1'] },    /* cejilla 1 (forma A) */
+          { base:6, trastes:['6','8','8','6','6','6'] } ], /* v2.68: cejilla 6 (forma E) */
+  'C#m':[ { base:4, trastes:['x','4','6','6','5','4'] },    /* cejilla 4 (forma A) */
+          { base:9, trastes:['9','11','11','9','9','9'] } ], /* v2.68: cejilla 9 (forma E) */
+  'D#m':[ { base:6, trastes:['x','6','8','8','7','6'] },    /* cejilla 6 (forma A) */
+          { base:11, trastes:['11','13','13','11','11','11'] } ], /* v2.68: cejilla 11 (forma E) */
+  'G#m':[ { base:4, trastes:['4','6','6','4','4','4'] },    /* cejilla 4 (forma E) */
+          { base:11, trastes:['x','11','13','13','12','11'] } ], /* v2.68: cejilla 11 (forma A) */
   // Séptimas más comunes
-  'A7': [ { base:0, trastes:['x','0','2','0','2','0'] } ],
-  'C7': [ { base:0, trastes:['x','3','2','3','1','0'] } ],
-  'D7': [ { base:0, trastes:['x','x','0','2','1','2'] } ],
-  'E7': [ { base:0, trastes:['0','2','0','1','0','0'] } ],
-  'G7': [ { base:0, trastes:['3','2','0','0','0','1'] } ],
+  'A7': [ { base:0, trastes:['x','0','2','0','2','0'] },    /* abierta */
+          { base:5, trastes:['5','7','5','6','5','5'] } ], /* v2.68: cejilla 5 (forma E7) */
+  'C7': [ { base:0, trastes:['x','3','2','3','1','0'] },    /* abierta */
+          { base:8, trastes:['8','10','8','9','8','8'] } ], /* v2.68: cejilla 8 (forma E7) */
+  'D7': [ { base:0, trastes:['x','x','0','2','1','2'] },    /* abierta */
+          { base:5, trastes:['x','5','7','5','7','5'] } ], /* v2.68: cejilla 5 (forma A7) */
+  'E7': [ { base:0, trastes:['0','2','0','1','0','0'] },    /* abierta */
+          { base:7, trastes:['x','7','9','7','9','7'] } ], /* v2.68: cejilla 7 (forma A7) */
+  'G7': [ { base:0, trastes:['3','2','0','0','0','1'] },    /* abierta */
+          { base:3, trastes:['3','5','3','4','3','3'] } ], /* v2.68: cejilla 3 (forma E7) */
   'B7': [ { base:0, trastes:['x','2','1','2','0','2'] },
           { base:7, trastes:['7','9','7','8','7','7'] } ],
   'Em7':[ { base:0, trastes:['0','2','0','0','0','0'] },
@@ -2316,26 +2439,42 @@ const DIGITACIONES = {
   'Cadd9':[ { base:0, trastes:['x','3','2','0','3','0'] },
             { base:0, trastes:['x','3','2','0','3','3'] } ],
   // ——— v2.16: séptima mayor (maj7) ———
-  'Cmaj7':[ { base:0, trastes:['x','3','2','0','0','0'] } ],
-  'Dmaj7':[ { base:0, trastes:['x','x','0','2','2','2'] } ],
-  'Emaj7':[ { base:0, trastes:['0','2','1','1','0','0'] } ],
+  'Cmaj7':[ { base:0, trastes:['x','3','2','0','0','0'] },   /* abierta */
+            { base:3, trastes:['x','3','5','4','5','3'] } ], /* v2.68: cejilla 3 (forma Amaj7) */
+  'Dmaj7':[ { base:0, trastes:['x','x','0','2','2','2'] },   /* abierta */
+            { base:5, trastes:['x','5','7','6','7','5'] } ], /* v2.68: cejilla 5 (forma Amaj7) */
+  'Emaj7':[ { base:0, trastes:['0','2','1','1','0','0'] },   /* abierta */
+            { base:7, trastes:['x','7','9','8','9','7'] } ], /* v2.68: cejilla 7 (forma Amaj7) */
   'Fmaj7':[ { base:0, trastes:['x','x','3','2','1','0'] },
             { base:1, trastes:['1','x','2','2','1','0'] } ],
-  'Gmaj7':[ { base:0, trastes:['3','2','0','0','0','1'] } ],
-  'Amaj7':[ { base:0, trastes:['x','0','2','1','2','0'] } ],
-  'A#maj7':[ { base:1, trastes:['x','1','3','2','3','1'] } ],   // Bbmaj7
-  'D#maj7':[ { base:0, trastes:['x','x','1','3','2','3'] } ],   // Ebmaj7
-  'Bmaj7':[ { base:2, trastes:['x','2','4','3','4','2'] } ],
+  'Gmaj7':[ { base:0, trastes:['3','2','0','0','0','1'] },   /* abierta */
+            { base:3, trastes:['3','5','4','4','3','3'] } ], /* v2.68: cejilla 3 (forma Emaj7) */
+  'Amaj7':[ { base:0, trastes:['x','0','2','1','2','0'] },   /* abierta */
+            { base:5, trastes:['5','7','6','6','5','5'] } ], /* v2.68: cejilla 5 (forma Emaj7) */
+  'A#maj7':[ { base:1, trastes:['x','1','3','2','3','1'] },   /* Bbmaj7 */
+             { base:6, trastes:['6','8','7','7','6','6'] } ], /* v2.68: cejilla 6 (forma Emaj7) */
+  'D#maj7':[ { base:0, trastes:['x','x','1','3','2','3'] },   /* Ebmaj7 */
+             { base:6, trastes:['x','6','8','7','8','6'] } ], /* v2.68: cejilla 6 (forma Amaj7) */
+  'Bmaj7':[ { base:2, trastes:['x','2','4','3','4','2'] },    /* cejilla 2 (forma Amaj7) */
+            { base:7, trastes:['7','9','8','8','7','7'] } ], /* v2.68: cejilla 7 (forma Emaj7) */
   // ——— menores con séptima que faltaban ———
-  'Dm7': [ { base:0, trastes:['x','x','0','2','1','1'] } ],
-  'Fm7': [ { base:1, trastes:['1','3','1','1','1','1'] } ],
-  'Gm7': [ { base:3, trastes:['3','5','3','3','3','3'] } ],
-  'A#m7': [ { base:1, trastes:['x','1','3','1','2','1'] } ],   // Bbm7
+  'Dm7': [ { base:0, trastes:['x','x','0','2','1','1'] },    /* abierta */
+           { base:5, trastes:['x','5','7','5','6','5'] } ], /* v2.68: cejilla 5 (forma Am7) */
+  'Fm7': [ { base:1, trastes:['1','3','1','1','1','1'] },    /* cejilla 1 (forma Em7) */
+           { base:8, trastes:['x','8','10','8','9','8'] } ], /* v2.68: cejilla 8 (forma Am7) */
+  'Gm7': [ { base:3, trastes:['3','5','3','3','3','3'] },    /* cejilla 3 (forma Em7) */
+           { base:10, trastes:['x','10','12','10','11','10'] } ], /* v2.68: cejilla 10 (forma Am7) */
+  'A#m7': [ { base:1, trastes:['x','1','3','1','2','1'] },   /* Bbm7 */
+            { base:6, trastes:['6','8','6','6','6','6'] } ], /* v2.68: cejilla 6 (forma Em7) */
   // ——— suspendidos (se pulsa o se quita un dedo, tampoco hay 3ª) ———
-  'Asus4':[ { base:0, trastes:['x','0','2','2','3','0'] } ],
-  'Dsus4':[ { base:0, trastes:['x','x','0','2','3','3'] } ],
-  'Esus4':[ { base:0, trastes:['0','2','2','2','0','0'] } ],
-  'Gsus4':[ { base:0, trastes:['3','3','0','0','1','3'] } ],
+  'Asus4':[ { base:0, trastes:['x','0','2','2','3','0'] },   /* abierta */
+            { base:5, trastes:['5','7','7','7','5','5'] } ], /* v2.68: cejilla 5 (forma Esus4) */
+  'Dsus4':[ { base:0, trastes:['x','x','0','2','3','3'] },   /* abierta */
+            { base:10, trastes:['10','12','12','12','10','10'] } ], /* v2.68: cejilla 10 (forma Esus4) */
+  'Esus4':[ { base:0, trastes:['0','2','2','2','0','0'] },   /* abierta */
+            { base:7, trastes:['x','7','9','9','10','7'] } ], /* v2.68: cejilla 7 (forma Asus4) */
+  'Gsus4':[ { base:0, trastes:['3','3','0','0','1','3'] },   /* abierta */
+            { base:3, trastes:['3','5','5','5','3','3'] } ], /* v2.68: cejilla 3 (forma Esus4) */
   'Asus2':[ { base:0, trastes:['x','0','2','2','0','0'] } ],
   'Dsus2':[ { base:0, trastes:['x','x','0','2','3','0'] } ],
   'Esus2':[ { base:0, trastes:['0','2','4','x','0','0'] } ],
@@ -2373,9 +2512,36 @@ const DIGITACIONES = {
   'F/A': [ { base:0, trastes:['x','0','3','2','1','1'] } ],
   'F/C': [ { base:0, trastes:['x','3','3','2','1','1'] } ],
   // ——— sueltas que faltaban ———
-  'Fm': [ { base:1, trastes:['1','3','3','1','1','1'] } ],
-  'F7': [ { base:1, trastes:['1','3','1','2','1','1'] } ],
-  'D11': [ { base:0, trastes:['x','x','0','2','1','2'] } ]   // la fácil: D con A, C y F#
+  'Fm': [ { base:1, trastes:['1','3','3','1','1','1'] },     /* cejilla 1 (forma Em) */
+          { base:8, trastes:['x','8','10','10','9','8'] } ], /* v2.68: cejilla 8 (forma Am) */
+  'F7': [ { base:1, trastes:['1','3','1','2','1','1'] },     /* cejilla 1 (forma E7) */
+          { base:8, trastes:['x','8','10','8','10','8'] } ], /* v2.68: cejilla 8 (forma A7) */
+  'D11': [ { base:0, trastes:['x','x','0','2','1','2'] } ],  // la fácil: D con A, C y F#
+  /* ——— v2.69: los complejos que se echaban en falta ———
+     dim7 (disminuido con séptima): es SIMÉTRICO, la misma forma
+     sirve desplazada 3 trastes; la 2ª digitación es la misma
+     cejilla con la raíz en la 4ª cuerda. add13/13/7#9: las
+     formaciones de toda la vida comprobadas nota por nota */
+  'Cdim7': [ { base:3, trastes:['x','3','4','2','4','x'] },   /* cejilla 3, raíz en la 5ª */
+             { base:10, trastes:['x','x','10','11','10','11'] } ], /* v2.69: raíz en la 4ª */
+  'Ddim7': [ { base:5, trastes:['x','5','6','4','6','x'] },
+             { base:0, trastes:['x','x','0','1','0','1'] } ],
+  'Edim7': [ { base:7, trastes:['x','7','8','6','8','x'] },
+             { base:2, trastes:['x','x','2','3','2','3'] } ],
+  'Fdim7': [ { base:8, trastes:['x','8','9','7','9','x'] },
+             { base:3, trastes:['x','x','3','4','3','4'] } ],
+  'Gdim7': [ { base:10, trastes:['x','10','11','9','11','x'] },
+             { base:5, trastes:['x','x','5','6','5','6'] } ],
+  'Adim7': [ { base:12, trastes:['x','12','13','11','13','x'] },
+             { base:7, trastes:['x','x','7','8','7','8'] } ],
+  'Bdim7': [ { base:2, trastes:['x','2','3','1','3','x'] },
+             { base:9, trastes:['x','x','9','10','9','10'] } ],
+  'Gadd13': [ { base:0, trastes:['3','x','0','0','0','0'] },   /* Sol con la 13 al aire */
+              { base:3, trastes:['3','x','5','4','5','x'] } ], /* v2.69: con raíz y 5ª */
+  'D7#9': [ { base:5, trastes:['x','5','4','5','6','x'] },    /* "el acorde de Hendrix" */
+            { base:10, trastes:['10','12','10','11','10','13'] } ], /* v2.69: cejilla 10 */
+  'A13': [ { base:0, trastes:['x','0','2','0','2','2'] },     /* 13ª en la 1ª cuerda */
+           { base:5, trastes:['5','x','5','6','7','x'] } ]   /* v2.69: cejilla 5, sin abiertas */
 };
 
 /* El acorde toque cuando se transporta se traslada el dibujo completo
@@ -2617,6 +2783,11 @@ function pintarCancion() {
     document.title = 'Guitarra NVZ';
     return;
   }
+  /* v2.70: ficha de Guitar Pro — sin letra; una tarjeta que abre el visor */
+  if (cancionActual.esGp) {
+    pintarFichaGP(cont);
+    return;
+  }
   const datos = parsear(cancionActual.texto);
   /* el título sale del texto ({title:...}) o, si no, del campo
      título que se escribió en el editor (v2.15) */
@@ -2683,8 +2854,7 @@ function pintarCancion() {
   datos.lineas.forEach(l => {
     if (l.tipo === 'vacio') { const sep = document.createElement('div'); sep.className = 'pausa'; cont.appendChild(sep); return; }
     // Etiqueta de sección explícita: {c: Intro} o línea corta de texto
-    if (l.tipo === 'etiqueta' ||
-        (!/\[[^\]]+\]/.test(l.texto) && l.texto.length <= 30 && /^[A-Za-zÁÉÍÓÚáéíóúñü·0-9x ]+$/.test(l.texto))) {
+    if (l.tipo === 'etiqueta' || esEtiquetaSeccion(l.texto)) {
       parte = tipoSeccion(l.texto);       // ← clasifica: verso, estri, puente, intro, outro, otro
       const et = document.createElement('div');
       et.className = 'etiqueta-seccion' + (parte ? ' etq-de-parte' : '');
@@ -2743,8 +2913,9 @@ function pintarCancion() {
    que ya se lanza en todos esos momentos). */
 function separarAcordes() {
   const MIN = 3;   /* px de aire mínimo entre acordes */
-  /* .linea (acordes flotando) y .linea-acordes-solo (monoespaciado) */
-  document.querySelectorAll('#letra .linea, #letra .linea-acordes-solo').forEach(lin => {
+  /* .linea (acordes flotando) y .linea-acordes-solo (monoespaciado)
+     v2.66: también dentro de la VISTA PREVIA del editor */
+  document.querySelectorAll('#letra .linea, #ed-vista-letra .linea, #letra .linea-acordes-solo, #ed-vista-letra .linea-acordes-solo').forEach(lin => {
     const acordes = [...lin.querySelectorAll('.acorde, .acordeSol')];
     if (acordes.length < 2) return;
     for (let pasada = 0; pasada < 3; pasada++) {
@@ -3698,6 +3869,35 @@ const PARTES = [
   { id: 'otro',   nombre: 'Instrumental / Solo / Otros' }
 ];
 
+/* ============================================================
+   ¿UNA LÍNEA CORTA ES DE VERDAD UNA ETIQUETA DE SECCIÓN? (v2.67)
+   Antes bastaba con que la línea fuese corta, sin acordes y solo
+   con letras: canciones con frases cortas SIN acordes (p. ej.
+   "On the turning away" de Pink Floyd) se las COMÍA y las pintaba
+   de naranja como si fuesen etiquetas, trastocando también la
+   parte siguiente. Ahora además la PRIMERA palabra hay que ser de
+   sección y la línea tener 1 o 2 palabras: "Verse 1", "Coro",
+   "Estribillo", "Solo guitarra" o "Punteo 2" sí; "On the turning
+   away" o "the final cut" no. Las escritas como directiva
+   {c: ...} siguen siendo etiquetas SIEMPRE (y valen para cualquier
+   etiqueta rara que no alcance esta lista)
+   ============================================================ */
+function esEtiquetaSeccion(t) {
+  const s = (t || '').trim();
+  if (/\[[^\]]+\]/.test(s)) return false;              /* lleva acordes: es letra */
+  if (s.length > 30) return false;
+  if (!/^[A-Za-zÁÉÍÓÚáéíóúñü·0-9x ]+$/.test(s)) return false;
+  const palabras = s.toLowerCase().split(/\s+/);
+  const CABEZAS = [
+    'verso', 'verse', 'estrofa', 'couplet',
+    'estribillo', 'estri', 'coro', 'chorus', 'refrain',
+    'puente', 'bridge', 'intro', 'interludio', 'outro',
+    'final', 'coda', 'ending', 'despedida',
+    'solo', 'punteo', 'instrumental', 'riff'
+  ];
+  return CABEZAS.indexOf(palabras[0]) !== -1 && palabras.length <= 2;
+}
+
 /* Clasifica el texto de una etiqueta ("Verse 2", "Coro", "Punteo"…) */
 function tipoSeccion(txt) {
   const t = (txt || '').toLowerCase();
@@ -3735,10 +3935,16 @@ function regenerarEstiloPartes() {
     const s = estilosPartes[p.id]; if (!s) return;
     const reglas = [];
     if (s.c) reglas.push('color:' + s.c);
-    if (s.t) reglas.push('font-size: calc(var(--tamano-letra) + ' + s.t + 'px)');
+    /* v2.72: el extra de tamaño de la parte se multiplica TAMBIÉN en el
+       modo concierto (antes era tamaño fijo base+px: en concierto el
+       estribillo NO crecía con el resto). Sin la variable (modo
+       normal), el multiplicador vale 1 y queda como siempre */
+    if (s.t) reglas.push('font-size: calc((var(--tamano-letra) + ' + s.t + 'px) * var(--zoom-concierto, 1))');
     if (s.n !== null && s.n !== undefined) reglas.push('font-weight:' + (s.n ? '700' : '400'));
     if (!reglas.length) return;
     css += '#letra .parte-' + p.id + ' { ' + reglas.join(';') + '; }';
+    /* v2.66: la vista previa del editor usa los mismos estilos de parte */
+    css += '#ed-vista-letra .parte-' + p.id + ' { ' + reglas.join(';') + '; }';
     /* un acorde SIEMPRE conserva su color y peso propios (verde/negrita) */
     css += '#letra .parte-' + p.id + ' .acorde, #letra .parte-' + p.id + ' .acordeSol { color: var(--acorde); font-weight: 700; }';
     /* las anotaciones [*x2] siguen grises */
@@ -3990,6 +4196,22 @@ function midiConectar(idx) {
     midiEscuchar(elegido);
     return true;
   }).catch(() => { actualizarChipMidi(); return false; });
+}
+
+/* v2.72: el ARRANQUE ya no pide el permiso MIDI a la brava (el aviso
+   de "quiere controlar y reprogramar los dispositivos MIDI" salía
+   SIEMPRE que abrías la app: en file:// el navegador no puede
+   recordar el permiso, así que pedía cada vez). Ahora: si el
+   navegador ya lo había concedido, el pedal se reconecta en
+   silencio; si no, NO se pide nada al arrancar — el chip queda en
+   su estado normal y conectas con UN clic cuando lo necesites. */
+function midiArranque() {
+  if (!midi.entradaId) return;
+  if (!navigator.permissions || !navigator.permissions.query) return;   /* sin API de permisos: no pedir nada */
+  navigator.permissions.query({ name: 'midi', sysex: false }).then((estado) => {
+    if (estado.state === 'granted') midiConectar();   /* permiso ya dado: reconecta sin avisar */
+    /* 'prompt' o 'denied': al arranque NO se pide nada (lo pides tú con un clic) */
+  }).catch(() => { /* navegador que no sabe consultar este permiso: nada */ });
 }
 
 /* Cuelga la escucha en el puerto. Ignore TODO excepto Program Change */
@@ -5448,6 +5670,15 @@ function conciertoSalir() {
   restaurarPantalla();                    /* si estaba a pantalla completa, sale */
   document.body.classList.remove('modo-concierto');
   clearTimeout(relojBarraConcierto);
+  /* v2.72: los mandos flotantes NO pueden quedarse fijos encima al
+     salir del concierto (si estaban en pantalla, se quedaban PARA
+     SIEMPRE: su reloj acababa de pararse y nadie los escondía) */
+  const barra = document.getElementById('barra-concierto');
+  if (barra) barra.classList.remove('visible');
+  /* y el multiplicador del concierto se quita de la raíz: en modo
+     normal, los estilos de parte vuelven a medir SU tamaño (var
+     sin definir = multiplicador 1) */
+  document.documentElement.style.removeProperty('--zoom-concierto');
 }
 
 function alternarConcierto() { conciertoEnMarcha ? conciertoSalir() : conciertoAbrir(); }
@@ -5828,6 +6059,16 @@ function abrirEditorLista(id) {
   document.getElementById('ed-lista-mascara').classList.add('abierto');
 }
 
+/* v2.71: mover una canción de puesto con las flechas ⬆/⬇ del editor
+   (salto -1 sube, +1 baja; mismo efecto que arrastrarla) */
+function moverEnEdicion(id, salto) {
+  const desde = idsEdicion.indexOf(id);
+  const hasta = desde + salto;
+  if (desde < 0 || hasta < 0 || hasta >= idsEdicion.length) return;
+  idsEdicion.splice(hasta, 0, idsEdicion.splice(desde, 1)[0]);
+  pintarEditorLista();
+}
+
 function pintarEditorLista() {
   const todas = document.getElementById('ed-lista-todas');
   const enLista = document.getElementById('ed-lista-en');
@@ -5841,7 +6082,8 @@ function pintarEditorLista() {
     fila.className = 'fila-ed';
     fila.innerHTML = '<div class="txt"><strong></strong><small></small></div>';
     fila.querySelector('.txt strong').textContent = c.titulo;
-    fila.querySelector('.txt small').textContent = c.artista || '';
+    fila.querySelector('.txt small').textContent = (c.esGp ? '🎸 Guitar Pro' : '') +
+      ((c.esGp && c.artista) ? ' · ' : '') + (c.artista || '');
 
     const esta = idsEdicion.indexOf(c.id) !== -1;
     const btn = document.createElement('button');
@@ -5865,11 +6107,23 @@ function pintarEditorLista() {
     const fila = document.createElement('div');
     fila.className = 'fila-ed';
     fila.draggable = true;
-    fila.innerHTML = '<span class="pos"></span><div class="txt"><strong></strong><small></small></div><span class="agarradera">⠿</span>';
+    /* v2.71: ⬆/⬇ para cambiar el puesto SIN arrastrar (además de la agarradera) */
+    fila.innerHTML = '<span class="pos"></span><div class="txt"><strong></strong><small></small></div>' +
+      '<span class="mover">' +
+      '<button class="btn mini" title="Subir esta canción un puesto">⬆</button>' +
+      '<button class="btn mini" title="Bajar esta canción un puesto">⬇</button>' +
+      '</span><span class="agarradera">⠿</span>';
     fila.querySelector('.pos').textContent = (pos + 1) + '.';
     fila.querySelector('.txt strong').textContent = c.titulo;
-    fila.querySelector('.txt small').textContent = c.artista || '';
-    fila.title = 'Arrastra esta fila para cambiarla de sitio';
+    fila.querySelector('.txt small').textContent = (c.esGp ? '🎸 Guitar Pro' : '') +
+      ((c.esGp && c.artista) ? ' · ' : '') + (c.artista || '');
+    fila.title = 'Arrastra esta fila (o usa ⬆/⬇) para cambiarla de sitio';
+    const btnSube = fila.querySelector('.mover .btn');
+    const btnBaja = fila.querySelectorAll('.mover .btn')[1];
+    btnSube.disabled = pos === 0;                       /* la primera no puede subir más */
+    btnBaja.disabled = pos === idsEdicion.length - 1;   /* la última no puede bajar más */
+    btnSube.onclick = () => moverEnEdicion(id, -1);
+    btnBaja.onclick = () => moverEnEdicion(id, 1);
 
     /* marca limpia: quita arrastrando/soltar-aqui de todas las filas */
     const limpiarMarcas = () => {
@@ -5955,6 +6209,7 @@ function prepararEditor(modal, titulo, artista, texto) {
   document.getElementById('btn-editor-eliminar').style.display =
     editorModo.tipo === 'mia' ? '' : 'none';
   $editorMascara().classList.add('abierto');
+  edVistaPintar();   /* v2.66: la vista previa acompaña desde el primer instante */
   document.getElementById('editor-texto').focus();
 }
 
@@ -5978,6 +6233,77 @@ function abrirEditarActual() {
 }
 
 function cerrarEditor() { $editorMascara().classList.remove('abierto'); }
+
+/* ============================================================
+   v2.66 · VISTA PREVIA EN VIVO del editor — repinta la canción
+   CON EL MISMO MOTOR que la pantalla (parsear + construirLinea +
+   etiquetas + tabulaturas + líneas de solo acordes) pero A UNA
+   SOLA COLUMNA, dentro de la columna derecha del editor a full.
+   Se pinta al abrir y se actualiza con parón amable (180 ms)
+   mientras escribes el título, el artista o la letra
+   ============================================================ */
+function edVistaPintar() {
+  const visor = document.getElementById('ed-vista-letra');
+  if (!visor) return;
+  if (!$editorMascara().classList.contains('abierto')) return;   /* cerrado: no trabajar */
+  const texto = document.getElementById('editor-texto').value;
+  const datos = parsear(texto);
+  /* el título/artista salen del texto ({title:...}) o, si vacíos, de los campos */
+  const titulo = datos.titulo || document.getElementById('editor-titulo').value.trim();
+  const artista = datos.artista || document.getElementById('editor-artista').value.trim();
+  visor.innerHTML = '';
+  if (titulo || artista) {
+    const cab = document.createElement('div');
+    cab.className = 'cabeza-cancion';
+    const act = document.createElement('div');
+    act.className = 'cabeza-actual';
+    if (titulo) { const h = document.createElement('h2'); h.textContent = titulo; act.appendChild(h); }
+    if (artista) { const p = document.createElement('p'); p.className = 'artista'; p.textContent = artista; act.appendChild(p); }
+    cab.appendChild(act);
+    visor.appendChild(cab);
+  }
+  /* el MISMO bucle del cuerpo que en pintarCancion (v2.3 + v2.33...) */
+  let parte = null;
+  const cuerpo = document.createElement('div');
+  cuerpo.className = 'cuerpo-cancion';
+  datos.lineas.forEach(l => {
+    if (l.tipo === 'vacio') { const sep = document.createElement('div'); sep.className = 'pausa'; cuerpo.appendChild(sep); return; }
+    if (l.tipo === 'etiqueta' || esEtiquetaSeccion(l.texto)) {
+      parte = tipoSeccion(l.texto);
+      const et = document.createElement('div');
+      et.className = 'etiqueta-seccion' + (parte ? ' etq-de-parte' : '');
+      et.textContent = l.texto;
+      cuerpo.appendChild(et);
+      return;
+    }
+    if (l.tipo === 'tab') {
+      const tab = document.createElement('div');
+      tab.className = 'linea-tab';
+      tab.textContent = l.texto;
+      cuerpo.appendChild(tab);
+      return;
+    }
+    if (esLineaRepetida(l.texto)) { cuerpo.appendChild(construirLineaRepetida(l.texto)); return; }
+    if (esLineaSoloAcordes(l.texto)) { cuerpo.appendChild(construirLineaSoloAcordes(l.texto)); return; }
+    const lin = construirLinea(l.texto);
+    lin.dataset.src = l.texto;
+    if (parte) lin.classList.add('parte-' + parte);
+    cuerpo.appendChild(lin);
+  });
+  visor.appendChild(cuerpo);
+  separarAcordes();   /* que los acordes tampoco se pisen en la preview */
+}
+
+let edVistaReloj = null;
+function edVistaCola() {
+  clearTimeout(edVistaReloj);
+  edVistaReloj = setTimeout(edVistaPintar, 180);
+}
+/* conectado en vivo: letra, título y artista del editor */
+['editor-texto', 'editor-titulo', 'editor-artista'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', edVistaCola);
+});
 
 /* ============================================================
    Herramientas del EDITOR (v2.36):
@@ -6466,6 +6792,133 @@ function asegurarAlphaTab() {
   return window.__atCargando;
 }
 
+/* ============================================================
+   v2.70 · LAS CANCIONES GUITAR PRO, EN TU BIBLIOTECA Y LISTAS
+   El archivo .gp se GUARDA en "IndexedDB" (el sótano del
+   navegador, que aguanta ficheros gordos) y queda una FICHA
+   como las demás canciones (con el título/artista de dentro
+   del .gp). Así se puede añadir a las LISTAS y reabrir con
+   un clic, sin volver a buscar el archivo (solo la 1ª vez
+   por navegador, como la librería alphaTab).
+   ============================================================ */
+let gpFichaActual = null;   /* la ficha de biblioteca del .gp que está en el visor */
+
+function gpAbrirBD() {
+  return new Promise((resuelta, rechazada) => {
+    try {
+      const pido = window.indexedDB.open('guitarra-nvz-gp', 1);
+      pido.onupgradeneeded = () => { pido.result.createObjectStore('archivos'); };
+      pido.onsuccess = () => resuelta(pido.result);
+      pido.onerror = () => rechazada(pido.error || new Error('no abrió la base'));
+    } catch (e) { rechazada(e); }
+  });
+}
+
+async function gpGuardarArchivosBD(id, buf) {
+  const bd = await gpAbrirBD();
+  return new Promise((resuelta, rechazada) => {
+    const tx = bd.transaction('archivos', 'readwrite');
+    tx.objectStore('archivos').put(buf, id);
+    tx.oncomplete = () => { bd.close(); resuelta(true); };
+    tx.onerror = () => { bd.close(); rechazada(tx.error || new Error('no guardó')); };
+  });
+}
+
+async function gpLeerArchivosBD(id) {
+  const bd = await gpAbrirBD();
+  return new Promise((resuelta, rechazada) => {
+    const tx = bd.transaction('archivos', 'readonly');
+    const pido = tx.objectStore('archivos').get(id);
+    pido.onsuccess = () => { bd.close(); resuelta(pido.result || null); };
+    pido.onerror = () => { bd.close(); rechazada(pido.error || new Error('no leyó')); };
+  });
+}
+
+async function gpBorrarArchivosBD(id) {
+  try {
+    const bd = await gpAbrirBD();
+    await new Promise((resuelta) => {
+      const tx = bd.transaction('archivos', 'readwrite');
+      tx.objectStore('archivos').delete(id);
+      tx.oncomplete = resuelta;
+      tx.onerror = resuelta;
+    });
+    bd.close();
+  } catch (e) { /* sin base no pasa nada */ }
+}
+
+/* Al abrir un .gp: crea (o reutiliza) la ficha y archiva el archivo.
+   Se llama "disparada" — si tarda no entorpece la carga del visor */
+async function gpEnBiblioteca(nombreArchivo, buf) {
+  try {
+    let ficha = misCanciones.find(c => c.esGp && c.nombreArchivo === nombreArchivo);
+    if (!ficha) {
+      ficha = { id: 'gp-' + Date.now() + '-' + Math.floor(Math.random() * 9000 + 1000),
+        titulo: (nombreArchivo.replace(/\.[a-z0-9]+$/i, '').replace(/_+/g, ' ').trim()) || 'Guitar Pro',
+        artista: '', esGp: true, nombreArchivo: nombreArchivo };
+      misCanciones.push(ficha);
+    }
+    gpFichaActual = ficha;
+    await gpGuardarArchivosBD(ficha.id, buf);
+    guardarAlmacen();
+    pintarBiblioteca();
+  } catch (e) { /* sin IndexedDB el visor funciona igual, solo no se archiva */ }
+}
+
+/* Reabrir una ficha Guitar Pro desde la biblioteca o una lista */
+async function gpAbrirFicha(ficha) {
+  try {
+    const buf = await gpLeerArchivosBD(ficha.id);
+    if (!buf) {
+      alert('Este .gp aún no está guardado en ESTE navegador.\nÁbrelo una vez con 🎼 Canciones › Guitar Pro y queda archivado para siempre.');
+      abrirGP();
+      return;
+    }
+    abrirGPVista(new File([buf], ficha.nombreArchivo || 'guitar-pro.gp'));
+  } catch (e) {
+    alert('No pude abrir la tablatura guardada. Ábrelo una vez más con 🎼 Canciones › Guitar Pro.');
+    abrirGP();
+  }
+}
+
+function abrirFichaGPActual() {
+  if (!cancionActual || !cancionActual.esGp) return;
+  gpAbrirFicha(cancionActual);
+}
+
+/* La tarjeta que se pinta cuando la canción abierta es de Guitar Pro */
+function pintarFichaGP(cont) {
+  const cab = document.createElement('div');
+  cab.className = 'cabeza-cancion';
+  const act = document.createElement('div');
+  act.className = 'cabeza-actual';
+  const h = document.createElement('h2');
+  h.textContent = cancionActual.titulo || 'Guitar Pro';
+  act.appendChild(h);
+  if (cancionActual.artista) {
+    const p = document.createElement('p');
+    p.className = 'artista';
+    p.textContent = cancionActual.artista;
+    act.appendChild(p);
+  }
+  cab.appendChild(act);
+  cont.appendChild(cab);
+  const caja = document.createElement('div');
+  caja.className = 'ficha-gp';
+  const ic = document.createElement('div');
+  ic.className = 'grande';
+  ic.textContent = '🎸';
+  const txt = document.createElement('p');
+  txt.textContent = 'Esta ficha es una canción de Guitar Pro: se toca en el visor de tablaturas' +
+    (cancionActual.nombreArchivo ? ' («' + cancionActual.nombreArchivo + '»)' : '') + '.';
+  const btn = document.createElement('button');
+  btn.className = 'btn';
+  btn.textContent = '▶ Abrir la tablatura';
+  btn.onclick = abrirFichaGPActual;
+  caja.append(ic, txt, btn);
+  cont.appendChild(caja);
+}
+
 function cerrarGPVista() {
   destruirGP();
   document.getElementById('gp-visor-mascara').classList.remove('abierto');
@@ -6493,10 +6946,12 @@ function abrirGPVista(archivo) {
   gpInfo('');
   destruirGP();
   mascara.classList.add('abierto');
+  gpFichaActual = null;   /* v2.70: la ficha se crea al archivar el archivo */
   gpInfo('cargando la librería alphaTab del CDN… (la primera vez, unos segundos)');
   asegurarAlphaTab().then((AT) => {
     gpInfo('leyendo «' + archivo.name + '»…');
     archivo.arrayBuffer().then((buf) => {
+      gpEnBiblioteca(archivo.name, buf);   /* v2.70: ficha en la biblioteca + .gp a IndexedDB */
       const zona = document.getElementById('gp-tab');
       zona.innerHTML = '';
       gpApi = new AT.AlphaTabApi(zona, {
@@ -6525,7 +6980,14 @@ function abrirGPVista(archivo) {
           op.textContent = t.name || ('Pista ' + (i + 1));
           sel.appendChild(op);
         });
-        gpInfo(score.title ? '«' + score.title + '» · ' + score.tracks.length + ' pista(s)' : score.tracks.length + ' pista(s)');
+        const msgGP = score.title ? '«' + score.title + '» · ' + score.tracks.length + ' pista(s)' : score.tracks.length + ' pista(s)';
+        if (gpFichaActual) {   /* v2.70: la ficha toma el título/artista de DENTRO del .gp */
+          if (score.title) gpFichaActual.titulo = score.title;
+          if (score.artist) gpFichaActual.artista = score.artist;
+          guardarAlmacen();
+          pintarBiblioteca();
+          gpInfo(msgGP + ' · guardada en tu biblioteca ✓ (ya puede ir a las listas)');
+        } else gpInfo(msgGP);
       });
       gpApi.renderStarted.on(() => { if (document.getElementById('gp-pistas').options.length) gpInfo('dibujando tablatura…'); });
       gpApi.renderFinished.on(() => {
@@ -7140,6 +7602,7 @@ function eliminarDesdeEditor() {
   if (editorModo.tipo !== 'mia') return;
   if (!confirm('¿Borrar "' + misCanciones[editorModo.id].titulo + '" definitivamente?')) return;
   const idBorrar = misCanciones[editorModo.id].id;
+  if (misCanciones[editorModo.id].esGp) gpBorrarArchivosBD(idBorrar);   /* v2.70: su .gp archivado sobra */
   misCanciones.splice(editorModo.id, 1);
   borrarPistaAlmacen(idBorrar);      /* v2.24: su pista sobra, fuera */
   guardarAlmacen();
@@ -7156,6 +7619,7 @@ function eliminarCancionActual() {
   if (!confirm('¿Borrar "' + cancionActual.titulo + '" de la aplicación definitivamente?\n' +
       '(También desaparecerá de las listas donde esté; los archivos que hayas descargado no se tocan)')) return;
   const idBorrada = cancionActual.id;
+  if (cancionActual.esGp) gpBorrarArchivosBD(idBorrada);   /* v2.70: su .gp archivado sobra */
   const indiceEnMis = cursorEnMisCanciones();
   misCanciones.splice(indiceEnMis, 1);
   borrarPistaAlmacen(idBorrada);     /* v2.24: su pista sobra, fuera */
@@ -7585,7 +8049,8 @@ function pintarBiblioteca() {
     div.onclick = () => seleccionarCancion(p.i);
     div.innerHTML = '<strong></strong><small></small>';
     div.querySelector('strong').textContent = c.titulo;
-    div.querySelector('small').textContent = c.artista || '';
+    div.querySelector('small').textContent = (c.esGp ? '🎸 Guitar Pro' : '') +
+      ((c.esGp && c.artista) ? ' · ' : '') + (c.artista || '');
     zona.appendChild(div);
   });
   marcarCancionActiva();
@@ -7678,7 +8143,8 @@ function pintarSelector(zona) {
       fila.className = 'fila-lista-cancion';
       fila.innerHTML = '<div class="txt"><strong></strong><small></small></div>';
       fila.querySelector('.txt strong').textContent = c.titulo;
-      fila.querySelector('.txt small').textContent = c.artista || '';
+      fila.querySelector('.txt small').textContent = (c.esGp ? '🎸 Guitar Pro' : '') +
+      ((c.esGp && c.artista) ? ' · ' : '') + (c.artista || '');
       fila.onclick = () => seleccionarCancion(indiceDeCancion(c));
       /* marca cuál de las canciones de la lista está abierta */
       if (cancionActual && c.id === cancionActual.id) fila.classList.add('activa');
@@ -7753,7 +8219,7 @@ function marcarCancionActiva() {
 function pintarDiagramas() {
   const cont = document.getElementById('cuadros-chords');
   cont.innerHTML = '';
-  if (!cancionActual) return;
+  if (!cancionActual || cancionActual.esGp) return;   /* v2.70: GP no tiene acordes entre corchetes */
   // Recoge los acordes REALES de la canción (las anotaciones [*x2]
   // no son acordes, no van al panel)
   const set = new Set();
@@ -7780,6 +8246,15 @@ function seleccionarCancion(i) {
   cancionActual = TODAS()[i];
   transporte = 0;
   actualizarChip();
+  /* v2.71: el visor de Guitar Pro no puede quedarse FLOTANDO encima
+     enseñando la canción ANTERIOR cuando navegas (↑/↓, pedales, clic):
+     si la canción nueva NO es otra ficha GP, se cierra. Si lo es, no
+     se toca: abajo gpAbrirFicha reutiliza el visor abierto y cambia
+     la tablatura sin parpadeo. */
+  if (!(cancionActual && cancionActual.esGp)) cerrarGPVista();
+  /* v2.70: una ficha de Guitar Pro no tiene letra — la tarjeta se pinta
+     abajo y el visor de tablatura se abre solo */
+  if (cancionActual && cancionActual.esGp) gpAbrirFicha(cancionActual);
   pintarCancion();
   pintarDiagramas();
   document.querySelectorAll('.cancion-item').forEach(e =>
@@ -7799,9 +8274,10 @@ cargarVista();
 cargarMidi();
 aplicarZoomLetra();            /* v2.21: recordar el zoom que tenías */
 abrirDBPistas();               /* v2.24: despertar el almacén de pistas */
-/* reconectar la escucha MIDI si ya tenías puerto elegido (loopMIDI):
-   si el navegador tenía el permiso guardado, ni pregunta */
-if (midi.entradaId) midiConectar();
+/* v2.72: reconectar el pedal MIDI SOLO si el navegador ya había dado
+   el permiso (adiós al aviso de "controlar y reprogramar" al abrir la
+   app). Si no lo recuerda, conectas con un clic cuando lo necesites. */
+midiArranque();
 ponerAsistenteEnMarcha();     /* sondear el asistente de Bias (captura+OCR) cada 2 s */
 
 /* Versión visible en la cabecera */
