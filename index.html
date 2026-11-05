@@ -220,6 +220,14 @@
     z-index: 60;
   }
   .panel-menu.abierto { display: block; }
+  /* v2.81: el menú «⋯ Más» es largo (todo lo que antes llenaba la
+     barra) — que quepa aunque la pantalla sea pequeña y se recorre
+     con el dedo */
+  #menu-mas {
+    max-height: min(72vh, 620px);
+    overflow-y: auto;
+    min-width: 270px;
+  }
   .menu-item {
     display: block;
     width: 100%;
@@ -1827,17 +1835,22 @@
     body.sin-diagramas main { grid-template-columns: 1fr; }
     /* En vertical la letra vuelve a fluir hacia ABAJO (una columna).
        Y las líneas vuelven a poder partirse (porque ahí hay ancho) */
+    /* v2.81: aquí NO vale column-count: 1 — un multi-columna con
+       altura fija parte el sobrante en columnas invisibles hacia la
+       derecha (letra inalcanzable). column-count: auto APAGA el
+       multi-columna y el texto baja en flujo normal, con scroll
+       vertical de verdad */
     #letra.apaisado {
-      column-count: 1;
-      column-gap: 0;
+      column-count: auto;
+      column-gap: normal;
       column-rule: none;
       overflow-x: hidden;
       overflow-y: auto;
       scroll-behavior: auto;
     }
     #letra.apaisado .cuerpo-cancion {
-      column-count: 1;
-      column-gap: 0;
+      column-count: auto;
+      column-gap: normal;
       column-rule: none;
       height: auto;
     }
@@ -1845,11 +1858,17 @@
     #letra { padding: 20px; }
     /* v2.42: la banda del título también alcanza techo y bordes aquí */
     #letra .cabeza-cancion { margin: -20px -20px 16px; padding: 16px 20px 20px; }
-    /* En pantalla estrecha las columnas siempre van a 1 */
+    /* En pantalla estrecha las columnas se apagan (flujo hacia abajo) */
     #letra.columnas-2, #letra.columnas-3 {
-      column-count: 1;
+      column-count: auto;
       column-rule: none;
     }
+    /* v2.81: cabecera compacta y chip de MIDI/Bias escondido en
+       pantallas estrechas (come sitio y en la tablet no se usa:
+       el asistente Bias vive en el PC) — queda dentro de ⋯ Más */
+    header { gap: 8px; padding: 8px 10px; }
+    header h1 { font-size: 15px; }
+    #chip-midi { display: none; }
   }
 
   /* ============================================================
@@ -1991,49 +2010,17 @@
 
   <button class="btn" id="btn-scroll" onclick="alternarScroll()" title="La página se desplaza sola para tocar sin manos">▶ Auto-scroll</button>
 
-  <!-- v2.53: metrónomo: clic a un tempo ajustable para practicar -->
-  <button class="btn" onclick="metronomoAbrir()" title="Metrónomo: clic a un tempo ajustable (con acento en el compás)">🥁 Metrónomo</button>
-
-  <!-- v2.74: afinador — escucha por la entrada de sonido que elijas -->
-  <button class="btn" onclick="afinadorAbrir()" title="🎯 Afinador: elige la entrada de tu tarjeta de audio y afina (te dice la nota, cuánto desvía y qué cuerda es)">🎯 Afinador</button>
-
-  <!-- v2.64: modo concierto — la letra GIGANTE para tocar sin tocar teclas -->
-  <button class="btn" id="btn-concierto" onclick="alternarConcierto()" title="🎭 Modo concierto: la letra llena la pantalla (bien grande, con auto-scroll; salir con Escape)">🎭 Concierto</button>
-
-  <!-- Preset de Bias FX2 detectado por MIDI (v2.8). Clic abre el panel -->
-  <span class="chip" id="chip-midi" onclick="abrirEditorMidi()" title="Conectar la escucha MIDI">⚡ MIDI: apagado</span>
-
-  <!-- ===== Menú VISTA ===== -->
+  <!-- ============================================================
+       v2.81 · Menú «⋯ Más» — la barra queda solo con lo que se
+       usa MIENTRAS se toca (canciones, acordes, tono y
+       auto-scroll) y TODO lo demás vive aquí, ordenado por
+       secciones, sin comerse la pantalla en la tableta
+       ============================================================ -->
   <div class="menu">
-    <button class="btn menu-abrir" onclick="alternarMenu('menu-vista')">🎛 Vista ▾</button>
-    <div class="panel-menu" id="menu-vista">
-      <div class="menu-seccion">Columnas</div>
-      <button class="menu-item" id="menu-col-auto" onclick="ponerColumnas('auto'); refrescarMenuVista(); cerrarMenu()">↔ &nbsp;automático · apaisado</button>
-      <button class="menu-item" id="menu-col-1" onclick="ponerColumnas(1); refrescarMenuVista(); cerrarMenu()">◫ &nbsp;una columna</button>
-      <button class="menu-item" id="menu-col-2" onclick="ponerColumnas(2); refrescarMenuVista(); cerrarMenu()">◫◫ &nbsp;dos columnas</button>
-      <button class="menu-item" id="menu-col-3" onclick="ponerColumnas(3); refrescarMenuVista(); cerrarMenu()">◫◫◫ &nbsp;tres columnas</button>
-      <div class="menu-seccion">Letra / acordes (v2.65)</div>
-      <button class="menu-item" id="menu-solo-letra" onclick="alternarSoloLetra(); cerrarMenu()">♪ &nbsp;letra sola (sin acordes)</button>
-      <div class="menu-seccion">Colores y partes</div>
-      <button class="menu-item" onclick="abrirEditorPartes()">🎨 Estilo de etiquetas y partes…</button>
-      <div class="menu-seccion">Texto</div>
-      <button class="menu-item" onclick="abrirEditorTamanios()">🖋 Fuente y tamaños de texto…</button>
-      <div class="menu-seccion">Aspecto</div>
-      <button class="menu-item" onclick="alternarTema(); cerrarMenu()">◐ &nbsp;modo claro / oscuro</button>
-      <div class="menu-seccion">Concierto (v2.64)</div>
-      <button class="menu-item" onclick="conciertoAbrir(); cerrarMenu()">🎭 &nbsp;Modo concierto — letra GIGANTE</button>
-      <div class="menu-seccion">Atajos</div>
-      <button class="menu-item" onclick="atajosAbrir(); cerrarMenu()">⌨ &nbsp;Atajos de teclado…</button>
-      <div class="menu-seccion">Copia de seguridad (v2.51)</div>
-      <button class="menu-item" onclick="descargarCopia(); cerrarMenu()">💾 &nbsp;Guardar copia de TODO (canciones + listas + audio + apariencia)…</button>
-      <button class="menu-item" onclick="restaurarCopiaMenu()">♻ &nbsp;Restaurar una copia…</button>
-    </div>
-  </div>
+    <button class="btn menu-abrir" onclick="alternarMenu('menu-mas')">⋯ Más ▾</button>
+    <div class="panel-menu" id="menu-mas">
 
-  <!-- ===== Menú CANCIONES ===== -->
-  <div class="menu">
-    <button class="btn menu-abrir" onclick="alternarMenu('menu-cancion')">🎼 Canciones ▾</button>
-    <div class="panel-menu" id="menu-cancion">
+      <div class="menu-seccion">Canciones</div>
       <button class="menu-item" onclick="abrirEditorNueva(); cerrarMenu()">＋ &nbsp;Nueva canción</button>
       <button class="menu-item" onclick="abrirEditarActual(); cerrarMenu()">✎ &nbsp;Editar la canción abierta</button>
       <button class="menu-item" onclick="eliminarCancionActual(); cerrarMenu()">🗑 &nbsp;Eliminar la canción abierta…</button>
@@ -2041,8 +2028,38 @@
       <button class="menu-item" onclick="abrirBuscadorWeb(); cerrarMenu()">🌐 &nbsp;Buscar en internet…</button>
       <button class="menu-item" onclick="abrirGP(); cerrarMenu()">🎸 &nbsp;Abrir tablatura Guitar Pro…</button>
       <button class="menu-item" onclick="descargarCancionActual(); cerrarMenu()">⬇ &nbsp;Exportar esta canción (.chopro)</button>
+
+      <div class="menu-seccion">Herramientas</div>
+      <!-- v2.53: metrónomo: clic a un tempo ajustable para practicar -->
+      <button class="menu-item" onclick="metronomoAbrir(); cerrarMenu()">🥁 &nbsp;Metrónomo…</button>
+      <!-- v2.74: afinador — escucha por la entrada de sonido que elijas -->
+      <button class="menu-item" onclick="afinadorAbrir(); cerrarMenu()">🎯 &nbsp;Afinador…</button>
+      <!-- v2.64: modo concierto — la letra GIGANTE para tocar sin tocar teclas -->
+      <button class="menu-item" onclick="conciertoAbrir(); cerrarMenu()">🎭 &nbsp;Modo concierto — letra GIGANTE</button>
+      <button class="menu-item" onclick="abrirEditorMidi(); cerrarMenu()">⚡ &nbsp;MIDI / Bias…</button>
+
+      <div class="menu-seccion">Vista</div>
+      <button class="menu-item" id="menu-col-auto" onclick="ponerColumnas('auto'); refrescarMenuVista(); cerrarMenu()">↔ &nbsp;automático · apaisado</button>
+      <button class="menu-item" id="menu-col-1" onclick="ponerColumnas(1); refrescarMenuVista(); cerrarMenu()">◫ &nbsp;una columna</button>
+      <button class="menu-item" id="menu-col-2" onclick="ponerColumnas(2); refrescarMenuVista(); cerrarMenu()">◫◫ &nbsp;dos columnas</button>
+      <button class="menu-item" id="menu-col-3" onclick="ponerColumnas(3); refrescarMenuVista(); cerrarMenu()">◫◫◫ &nbsp;tres columnas</button>
+      <button class="menu-item" id="menu-solo-letra" onclick="alternarSoloLetra(); cerrarMenu()">♪ &nbsp;letra sola (sin acordes)</button>
+
+      <div class="menu-seccion">Aspecto y ajustes</div>
+      <button class="menu-item" onclick="abrirEditorPartes(); cerrarMenu()">🎨 &nbsp;Estilo de etiquetas y partes…</button>
+      <button class="menu-item" onclick="abrirEditorTamanios(); cerrarMenu()">🖋 &nbsp;Fuente y tamaños de texto…</button>
+      <button class="menu-item" onclick="alternarTema(); cerrarMenu()">◐ &nbsp;modo claro / oscuro</button>
+      <button class="menu-item" onclick="atajosAbrir(); cerrarMenu()">⌨ &nbsp;Atajos de teclado…</button>
+
+      <div class="menu-seccion">Copia de seguridad (v2.51)</div>
+      <button class="menu-item" onclick="descargarCopia(); cerrarMenu()">💾 &nbsp;Guardar copia de TODO (canciones + listas + audio + apariencia)…</button>
+      <button class="menu-item" onclick="restaurarCopiaMenu(); cerrarMenu()">♻ &nbsp;Restaurar una copia…</button>
     </div>
   </div>
+
+  <!-- Preset de Bias FX2 detectado por MIDI (v2.8). Clic abre el panel.
+       v2.81: en pantalla estrecha se esconde (está dentro de ⋯ Más) -->
+  <span class="chip" id="chip-midi" onclick="abrirEditorMidi()" title="Conectar la escucha MIDI">⚡ MIDI: apagado</span>
 
   <input type="file" id="importar-archivos" accept=".chopro,.pro,.cho,.crd,.chordpro,.txt,.text" multiple style="display:none" onchange="importarArchivos(this.files)">
   <!-- v2.24: elegir la pista de acompañamiento (audio) para la canción abierta -->
@@ -2446,7 +2463,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.79';
+const VERSION = '2.81';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -5695,7 +5712,7 @@ function alternarMenu(id) {
   const panel = document.getElementById(id);
   panel.classList.add('abierto');
   menuAbierto = id;
-  if (id === 'menu-vista') refrescarMenuVista();
+  if (id === 'menu-mas') refrescarMenuVista();
   document.addEventListener('click', alPulsarFueraDeMenu, true);
 }
 
@@ -8212,16 +8229,18 @@ function avanzarPantalla(d) {
 }
 
 /* ============================================================
-   v2.79 · GESTOS TÁCTILES para la TABLETA (sin teclado):
+   v2.79/2.80 · GESTOS TÁCTILES para la TABLETA (sin teclado):
    • Arrastrar el dedo a los LADOS → la letra se mueve contigo
      a derecha/izquierda, como arrastrar un papel (en la vista
      apaisada, donde la canción es más ancha que la pantalla).
-   • Deslizar hacia ARRIBA (en seco) → canción SIGUIENTE: el
-     mismo trabajo que hace la flecha ↓ del teclado. En
-     apaisado la letra nunca baja (el sitio sobra a los lados,
-     no hacia abajo), así que ahí el gesto vale SIEMPRE; en la
-     vista de una columna solo cuando ya estás AL FINAL de la
-     canción, para no robarle al dedo el scroll de siempre.
+   • Deslizar hacia ARRIBA (en seco) → canción SIGUIENTE y
+     deslizar hacia ABAJO → canción ANTERIOR: el mismo trabajo
+     que hacen las flechas ↓/↑ del teclado. La regla la pone la
+     GEOMETRÍA real: si la letra se desplaza hacia abajo (vista
+     de una columna o pantalla estrecha), los gestos verticales
+     solo valen al FINAL (arriba) o al PRINCIPIO (abajo), para
+     no robarle al dedo el scroll de siempre; si la letra no
+     baja (apaisada en horizontal), valen SIEMPRE.
    Los toques siguen siendo toques: si el dedo no se mueve, no
    hay gesto (es un clic de toda la vida sobre un acorde/botón).
    ============================================================ */
@@ -8248,6 +8267,11 @@ function avanzarPantalla(d) {
       if (eje === 'x') zona.style.scrollBehavior = 'auto';   /* arrastre PEGADO al dedo, sin suavizado */
     }
     if (eje !== 'x') return;                 /* vertical: que el navegador haga lo de siempre */
+    /* v2.80: el arrastre a los lados SOLO si la letra se desplaza
+       de verdad hacia los lados (mira el CSS real: en pantallas
+       estrechas la vista apaisada se vuelve vertical, y ahí el
+       arrastre lateral no debe secuestrar nada) */
+    if (getComputedStyle(zona).overflowX !== 'auto') return;
     if (zona.scrollWidth - zona.clientWidth < 8) return;       /* no hay ancho que recorrer */
     ev.preventDefault();                     /* el gesto es nuestro: la letra sigue al dedo */
     zona.scrollLeft = scroll0 - dx;
@@ -8259,8 +8283,20 @@ function avanzarPantalla(d) {
       const dy = ev.changedTouches[0].clientY - y0;
       const dx = ev.changedTouches[0].clientX - x0;
       const alFinal = zona.scrollTop + zona.clientHeight >= zona.scrollHeight - 4;
-      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (esApaisado() || alFinal)) {
-        canciónSiguiente(1);                 /* deslizar arriba = canción siguiente */
+      const alPrincipio = zona.scrollTop <= 4;
+      /* la regla la pone la GEOMETRÍA real, no la vista elegida: si la
+         letra se desplaza hacia abajo (pantalla estrecha o vista de
+         una columna), los gestos verticales solo valen cuando el dedo
+         ya no puede hacer más scroll (al final / al principio); si la
+         letra no baja (apaisada en horizontal), valen SIEMPRE */
+      const sinScrollVertical = zona.scrollHeight - zona.clientHeight <= 8;
+      /* deslizar ARRIBA = canción siguiente (como la flecha ↓) */
+      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (sinScrollVertical || alFinal)) {
+        canciónSiguiente(1);
+      }
+      /* deslizar ABAJO = canción ANTERIOR (como la flecha ↑) */
+      else if (dy > 60 && Math.abs(dy) > Math.abs(dx) && (sinScrollVertical || alPrincipio)) {
+        canciónSiguiente(-1);
       }
     }
     eje = null;
