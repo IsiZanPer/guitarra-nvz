@@ -1026,6 +1026,97 @@
   #gp-visor-mascara.max { padding: 0; }
   #gp-visor-mascara.max #gp-visor-panel { width: 100vw; height: 100vh; border-radius: 0; border: none; }
 
+  /* ---------- AFINADOR (v2.74): nota + desvío + cuerda ---------- */
+  #afinador-mascara {
+    position: fixed;
+    inset: 0;
+    z-index: 58;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  #afinador-mascara.abierto { display: flex; }
+  #afinador-panel {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    width: min(560px, 96vw);
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+  #afinador-cuerpo { padding: 14px 18px 20px; overflow-y: auto; }
+  #afinador-cuerpo .pista { color: var(--texto-suave); font-size: 12px; margin: 4px 0 12px; }
+  #afinador-cuerpo select {
+    background: var(--panel-2, var(--panel));
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    padding: 6px 8px;
+    font-size: 13px;
+    width: 100%;
+  }
+  #afinador-cuerdas { display: flex; gap: 8px; justify-content: center; margin: 16px 0 4px; }
+  #afinador-cuerdas span {
+    min-width: 44px;
+    text-align: center;
+    padding: 8px 0;
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--texto-suave);
+    background: var(--panel-2, var(--panel));
+  }
+  #afinador-cuerdas span.sonando { color: var(--texto); border-color: var(--acorde); border-width: 2px; padding: 7px 0; }
+  #afinador-cuerdas span.afinada { color: #2ecc71; border-color: #2ecc71; }
+  #afinador-nota {
+    font-size: 72px;
+    font-weight: 800;
+    text-align: center;
+    line-height: 1;
+    margin-top: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  #afinador-hz { text-align: center; color: var(--texto-suave); font-size: 15px; min-height: 20px; }
+  #afinador-metro {
+    position: relative;
+    height: 26px;
+    border-radius: 999px;
+    margin: 14px 0 6px;
+    background: linear-gradient(90deg, #ff5f56 0%, #ffd25f 22%, #2ecc71 46%, #2ecc71 54%, #ffd25f 78%, #ff5f56 100%);
+    border: 1px solid var(--borde);
+  }
+  #afinador-aguja {
+    position: absolute;
+    top: -5px;
+    bottom: -5px;
+    width: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--texto);
+    border-radius: 2px;
+    transition: left 0.08s linear;
+    box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+  }
+  #afinador-aguja.verde { background: #b6f2c8; }
+  #afinador-aviso { text-align: center; font-size: 15px; margin-top: 6px; min-height: 22px; }
+  #afinador-estado { font-size: 12px; color: var(--texto-suave); margin-top: 8px; text-align: center; min-height: 16px; }
+  /* v2.77: medidor de nivel — cuánta señal está llegando de verdad */
+  #afinador-nivel {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--panel-2, var(--panel));
+    border: 1px solid var(--borde);
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  #afinador-nivel div { height: 100%; width: 0%; background: var(--acorde); transition: width 0.08s linear; }
+
   /* ---------- Metrónomo (v2.53) ---------- */
   #met-mascara {
     position: fixed;
@@ -1903,6 +1994,9 @@
   <!-- v2.53: metrónomo: clic a un tempo ajustable para practicar -->
   <button class="btn" onclick="metronomoAbrir()" title="Metrónomo: clic a un tempo ajustable (con acento en el compás)">🥁 Metrónomo</button>
 
+  <!-- v2.74: afinador — escucha por la entrada de sonido que elijas -->
+  <button class="btn" onclick="afinadorAbrir()" title="🎯 Afinador: elige la entrada de tu tarjeta de audio y afina (te dice la nota, cuánto desvía y qué cuerda es)">🎯 Afinador</button>
+
   <!-- v2.64: modo concierto — la letra GIGANTE para tocar sin tocar teclas -->
   <button class="btn" id="btn-concierto" onclick="alternarConcierto()" title="🎭 Modo concierto: la letra llena la pantalla (bien grande, con auto-scroll; salir con Escape)">🎭 Concierto</button>
 
@@ -2203,6 +2297,39 @@
   </div>
 </div>
 
+<!-- ===== AFINADOR (ventana flotante, v2.74) =====
+     Escucha por la ENTRADA de sonido que elijas (la tarjeta
+     de audio y sus entradas salen en la lista, como los
+     puertos MIDI) y dice la nota, cuánto desvía (cents) y
+     qué cuerda es. Los navegadores no pueden abrir el ASIO
+     (es de programas instalados): van por el sonido normal
+     de Windows — para afinar, de sobra. -->
+<div id="afinador-mascara">
+  <div id="afinador-panel">
+    <div class="cabecera-ed-lista">
+      <h3>🎯 Afinador</h3>
+      <div class="grupo">
+        <button class="btn" onclick="afinadorRefrescarEntradas()" title="Volver a mirar las entradas de sonido">⟳ Entradas</button>
+        <button class="btn" onclick="afinadorArrancar()" title="Pedir/renovar el permiso del micrófono (sin él, los nombres de las entradas salen sin nombre y puede que no llegue el sonido de tu tarjeta)">🎤 Permiso</button>
+        <button class="btn positiva" onclick="afinadorCerrar()" title="Cerrar el afinador (para la escucha)">✓ Ya está</button>
+      </div>
+    </div>
+    <div id="afinador-cuerpo">
+      <p class="pista">Toca una cuerda al aire y mueve la clavija hasta la marca verde. Elige la ENTRADA de tu tarjeta por la que entra la guitarra.</p>
+      <select id="afinador-entrada" onchange="afinadorElegirEntrada(this.value)" title="Entrada de sonido (micrófono o línea de la tarjeta)"></select>
+      <div id="afinador-estado"></div>
+      <div id="afinador-nivel" title="Cuánta señal está llegando (con la barrita mediana ya va bien; no hace falta al máximo)"><div></div></div>
+      <div id="afinador-cuerdas" title="Las 6 cuerdas al aire: se enciende la que estás tocando">
+        <span>E</span><span>A</span><span>D</span><span>G</span><span>B</span><span>e</span>
+      </div>
+      <div id="afinador-nota">–</div>
+      <div id="afinador-hz">&nbsp;</div>
+      <div id="afinador-metro"><div id="afinador-aguja"></div></div>
+      <div id="afinador-aviso">Toca una cuerda al aire…</div>
+    </div>
+  </div>
+</div>
+
 <!-- ===== Panel de ATAJOS de teclado (ventana flotante, v2.55) =====
      Aquí SE VEN todos los atajos y SE PUEDEN cambiar: clica la
      tecla de un atajo, pulsa la nueva (Escape cancela) y queda
@@ -2319,7 +2446,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.72';
+const VERSION = '2.79';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -5223,6 +5350,35 @@ async function componerCopia() {
   }
 }
 
+/* v2.73: guardar un archivo DEJANDO ELEGIR LA CARPETA al usuario.
+   En Chrome/Edge de ordenador abre la ventana de "Guardar como…"
+   (con el nombre ya sugerido). En Firefox y en la tablet esa
+   ventana no existe: va por el camino de siempre (carpeta de
+   descargas del navegador). Devuelve 'elegido' (guardó donde el
+   usuario dijo), 'cancelado' (cerró la ventana sin guardar) o
+   'clasica' (descarga normal, sin elegir sitio). */
+async function guardarArchivoConDialogo(blob, nombre) {
+  if (window.showSaveFilePicker) {
+    try {
+      const mano = await window.showSaveFilePicker({ suggestedName: nombre });
+      const escribir = await mano.createWritable();
+      await escribir.write(blob);
+      await escribir.close();
+      return 'elegido';
+    } catch (e) {
+      if (e && e.name === 'AbortError') return 'cancelado';   /* cerró la ventana */
+      /* cualquier otro fallo (p. ej. se agotó el permiso de clic):
+         sigue el camino clásico abajo */
+    }
+  }
+  const enlace = document.createElement('a');
+  enlace.href = URL.createObjectURL(blob);
+  enlace.download = nombre;
+  enlace.click();
+  URL.revokeObjectURL(enlace.href);
+  return 'clasica';
+}
+
 /* descargar la copia completa */
 async function descargarCopia() {
   const json = await componerCopia();
@@ -5231,12 +5387,19 @@ async function descargarCopia() {
   const pesoMB = (json.length / 1048576).toFixed(1);
   const fecha = copia.fecha.slice(0, 10);
   const blob = new Blob([json], { type: 'application/json' });
-  const enlace = document.createElement('a');
-  enlace.href = URL.createObjectURL(blob);
-  enlace.download = 'GuitarraNVZ-copia-' + fecha + '.json';
-  enlace.click();
-  URL.revokeObjectURL(enlace.href);
-  alert('Copia guardada ✓\n\n' + copia.canciones.length + ' canciones · ' + copia.listas.length + ' listas · ' + copia.pistas.length + ' pistas de audio (' + pesoMB + ' MB)\n\nGuarda ese archivo en un sitio seguro (pendrive, nube…). Para recuperarlo todo: ⚙ Vista ▾ → «Restaurar una copia…».');
+  /* v2.73: ANTES de dar la copia por hecha, se puede elegir dónde */
+  const como = await guardarArchivoConDialogo(blob, 'GuitarraNVZ-copia-' + fecha + '.json');
+  if (como === 'cancelado') {
+    alert('No se guardó la copia: cerraste la ventana de guardar.\n\nVuelve a ⚙ Vista ▾ → «Guardar copia de TODO» cuando quieras.');
+    return;
+  }
+  alert('Copia guardada ✓ ' + (como === 'elegido' ? 'en el sitio que elegiste' : '') +
+    '\n\n' + copia.canciones.length + ' canciones · ' + copia.listas.length + ' listas · ' +
+    copia.pistas.length + ' pistas de audio (' + pesoMB + ' MB)' +
+    (como === 'clasica'
+      ? '\n\nFue a la carpeta de DESCARGAS del navegador. Para elegir TÚ la carpeta:\n· Chrome/Edge (ordenador): la app abre la ventana «Guardar como…».\n· Firefox: Ajustes → General → Archivos y aplicaciones → marca «Preguntar siempre dónde guardar los archivos».'
+      : '\n\nGuárdala en un sitio seguro (pendrive, nube…) junto a las demás.') +
+    '\n\nPara recuperarlo todo: ⚙ Vista ▾ → «Restaurar una copia…».');
 }
 
 /* restaurar una copia (input de archivos) */
@@ -7271,6 +7434,316 @@ function gpAudioReiniciar() {
 }
 
 /* ============================================================
+   v2.74 · AFINADOR — el oído de la app: escucha por la ENTRADA
+   de sonido que elijas (tu tarjeta y sus entradas salen en la
+   lista, como los puertos MIDI) y dice la nota, cuánto desvía
+   (en "cents") y qué cuerda estás tocando.
+   OJO ASIO: los navegadores NO pueden abrir el ASIO (es cosa
+   reservada a los programas instalados). Escuchan por el
+   Windows de toda la vida (WASAPI) — para AFINAR sobra: lo
+   único que importa es oír la nota, no la tardanza.
+   Cómo detecta: AUTOCORRELACIÓN podada (el truco clásico,
+   aguanta bien los armónicos de la guitarra) sobre la señal
+   del AnalyserNode; 2048 muestras (~43 ms) y a ~12 veces por
+   segundo, que es más de lo que mueve la aguja.
+   ============================================================ */
+const AFINADOR_CUERDAS = [
+  { t: 'E', oct: 2, f: 82.41 },    /* la 6ª, la gorda */
+  { t: 'A', oct: 2, f: 110.00 },
+  { t: 'D', oct: 3, f: 146.83 },
+  { t: 'G', oct: 3, f: 196.00 },
+  { t: 'B', oct: 3, f: 246.94 },
+  { t: 'e', oct: 4, f: 329.63 }    /* la 1ª, la fina */
+];
+const CLAVE_AFINADOR = 'guitarra-nvz-afinador-entrada';
+let afinador = { enMarcha: false, stream: null, ctx: null, analizador: null, samples: null,
+  bucleId: 0, ultimoAnalisis: 0, entradaId: '', generacion: 0 };
+try { afinador.entradaId = localStorage.getItem(CLAVE_AFINADOR) || ''; } catch (e) { /* nada */ }
+
+function afinadorAbrir() {
+  document.getElementById('afinador-mascara').classList.add('abierto');
+  afinadorRefrescarEntradas();   /* la lista de entradas de la tarjeta */
+  afinadorArrancar();            /* y a escuchar ya */
+}
+
+function afinadorCerrar() {
+  afinadorParar();   /* cierra la ventana y para la escucha */
+  document.getElementById('afinador-mascara').classList.remove('abierto');
+}
+
+function afinadorParar() {
+  afinador.enMarcha = false;
+  /* v2.78: el número de generación SUBE — todos los bucles de análisis
+     vivos (vivos o zombis) ven que su ticket ya no vale y se van solos */
+  afinador.generacion++;
+  if (afinador.bucleId) { cancelAnimationFrame(afinador.bucleId); afinador.bucleId = 0; }
+  if (afinador.stream) {
+    afinador.stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { /* nada */ } });
+    afinador.stream = null;
+  }
+  if (afinador.ctx) {
+    try { afinador.ctx.close(); } catch (e) { /* nada */ }
+    afinador.ctx = null;
+  }
+  afinador.analizador = null;
+}
+
+/* La lista de entradas de sonido (mics/líneas de la tarjeta).
+   OJO: los NOMBRES solo se saben cuando ya dieron permiso al
+   micro; hasta entonces el navegador dice "sin nombre" — y esa
+   entrada genérica suele ser el micro del portátil, NO tu tarjeta. */
+async function afinadorRefrescarEntradas() {
+  const sel = document.getElementById('afinador-entrada');
+  const estado = document.getElementById('afinador-estado');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+    sel.innerHTML = '<option value="">(este navegador no ve entradas)</option>';
+    if (estado) estado.textContent = '';
+    return;
+  }
+  try {
+    const dispositivos = await navigator.mediaDevices.enumerateDevices();
+    const entradas = dispositivos.filter(d => d.kind === 'audioinput');
+    sel.innerHTML = '';
+    if (!entradas.length) {
+      sel.innerHTML = '<option value="">(no hay entradas de sonido)</option>';
+      if (estado) estado.textContent = '¿Windows las está bloqueando? Configuración → Privacidad y seguridad → Micrófono: permite el acceso.';
+      return;
+    }
+    let sinNombres = false;
+    entradas.forEach((d, i) => {
+      const o = document.createElement('option');
+      o.value = d.deviceId;
+      if (d.label) o.textContent = d.label;
+      else { o.textContent = 'Entrada ' + (i + 1) + ' — sin nombre (falta el permiso del micro)'; sinNombres = true; }
+      sel.appendChild(o);
+    });
+    /* la que elegiste otra vez, si sigue ahí */
+    if (afinador.entradaId && entradas.some(d => d.deviceId === afinador.entradaId)) sel.value = afinador.entradaId;
+    if (estado) estado.textContent = sinNombres
+      ? 'Sin nombres = falta el permiso del micro: pulsa 🎤 Permiso y DILE QUE SÍ al aviso del navegador. Entonces saldrán las entradas de tu tarjeta.'
+      : entradas.length + ' entrada(s) de sonido encontradas';
+  } catch (e) {
+    sel.innerHTML = '<option value="">(no pude listar las entradas)</option>';
+    if (estado) estado.textContent = '';
+  }
+}
+
+/* Arrancar (o rearrancar con otra entrada) la escucha */
+async function afinadorArrancar() {
+  afinadorParar();
+  const miGeneracion = afinador.generacion;   /* v2.78: mi ticket — si deja de valer, llegó otra orden detrás */
+  const aviso = document.getElementById('afinador-aviso');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    aviso.textContent = 'Este navegador no puede escuchar el micrófono.';
+    return;
+  }
+  const elegido = document.getElementById('afinador-entrada').value || afinador.entradaId;
+  /* AGC y anulaciones FUERA: le cambian el tono a la señal y el afinador se lía */
+  const condicion = { audio: { autoGainControl: false, echoCancellation: false, noiseSuppression: false, channelCount: 1 } };
+  if (elegido) condicion.audio.deviceId = { exact: elegido };
+  const enPrograma = navigator.userAgent.indexOf('GuitarraNvzApp') !== -1;   /* dentro del programa de Windows */
+  aviso.textContent = 'Pidiendo la entrada de sonido… (si sale el aviso del micro, dile que sí)';
+  /* si el usuario no ve (o ignora) el aviso de permiso, le echamos una mano a los 8 s */
+  const mano = setTimeout(() => {
+    if (afinador.stream) return;   /* ya llegó; no molestar */
+    aviso.textContent = enPrograma
+      ? 'Sin respuesta… Debería salir una VENTANA DE WINDOWS preguntando por el micrófono. Si no aparece, cierra el programa y vuelve a abrirlo, y pulsa 🎤 Permiso otra vez.'
+      : 'Sin respuesta… MIRA si hay un aviso de "micrófono" junto a la dirección de la página y DILE QUE SÍ. Si no está, cierra este panel y vuelve a abrirlo.';
+  }, 8000);
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(condicion);
+  } catch (e) {
+    clearTimeout(mano);
+    aviso.textContent = (e && e.name === 'NotAllowedError')
+      ? (enPrograma
+          ? 'PERMISO del micrófono denegado: pulsa 🎤 Permiso otra vez y di que SÍ en la ventana de Windows.'
+          : 'PERMISO del micrófono denegado. Firefox: mira el escudo/candado a la izquierda de la dirección → quita el bloqueo del "Micrófono" → cierra y reabre el afinador. (Si tú mismo lo bloqueaste antes, hay que deshacerlo ahí.)')
+      : 'No pude abrir la entrada de sonido (' + (e && e.name ? e.name : 'error') + ').';
+    return;
+  }
+  clearTimeout(mano);
+  /* v2.78: si mientras esperábamos el permiso cerraron el panel o
+     eligieron otra entrada, esta escucha ya no vale: la dejamos ir
+     (antes se quedaba abierta por detrás y acumulaba zombis) */
+  if (miGeneracion !== afinador.generacion) {
+    stream.getTracks().forEach(t => { try { t.stop(); } catch (e) { /* nada */ } });
+    return;
+  }
+  afinador.stream = stream;
+  stream.getAudioTracks().forEach(t => {
+    t.onended = () => {   /* desenchufaron la tarjeta a mitad de concierto */
+      if (afinador.stream === stream) {
+        afinadorParar();
+        const a2 = document.getElementById('afinador-aviso');
+        if (a2) a2.textContent = 'Se desconectó la entrada: elige otra o pulsa ⟳ Entradas.';
+      }
+    };
+  });
+  try {
+    afinador.ctx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { aviso.textContent = 'Este navegador no tiene audio (WebAudio).'; return; }
+  const fuente = afinador.ctx.createMediaStreamSource(stream);
+  afinador.analizador = afinador.ctx.createAnalyser();
+  afinador.analizador.fftSize = 2048;
+  fuente.connect(afinador.analizador);   /* se oye NADA: solo se analiza */
+  afinador.samples = new Float32Array(afinador.analizador.fftSize);
+  afinador.enMarcha = true;
+  afinador.ultimoAnalisis = 0;
+  afinadorRefrescarEntradas();           /* ya con permiso: los nombres reales */
+  afinadorBucle();
+}
+
+/* Elegir otra entrada: se guarda para siempre y se rearranca */
+async function afinadorElegirEntrada(id) {
+  afinador.entradaId = id;
+  try { localStorage.setItem(CLAVE_AFINADOR, id); } catch (e) { /* nada */ }
+  await afinadorArrancar();
+}
+
+/* El reloj: pilla la señal y la analiza (~12 veces por segundo).
+   v2.78: con TICKET de generación — si cierras o cambias de entrada,
+   los bucles viejos se ven sin ticket y se van solos (antes podían
+   quedarse varios a la vez y bloquear la página). */
+function afinadorBucle() {
+  if (!afinador.enMarcha) return;
+  const miGen = afinador.generacion;
+  const paso = () => {
+    if (!afinador.enMarcha || afinador.generacion !== miGen) return;
+    afinador.bucleId = requestAnimationFrame(paso);
+    const ahora = Date.now();
+    if (ahora - afinador.ultimoAnalisis < 80) return;
+    afinador.ultimoAnalisis = ahora;
+    if (!afinador.analizador || !afinador.samples) return;
+    afinador.analizador.getFloatTimeDomainData(afinador.samples);
+    /* medidor de nivel — para VER si llega señal y cuánta */
+    let s2 = 0;
+    for (let i = 0; i < afinador.samples.length; i++) { const x = afinador.samples[i]; s2 += x * x; }
+    const nivel = Math.sqrt(s2 / afinador.samples.length);
+    const hz = afinadorDetecta(afinador.samples, afinador.ctx.sampleRate);
+    afinadorPinta(hz, nivel);
+  };
+  paso();
+}
+
+/* v2.78 · DETECTOR NSDF (método de McLeod) — sustituye a la
+   autocorrelación a pelo de las v2.74–2.77, que con ruido se
+   equivocaba de retardo (el ruido rompía la búsqueda del primer
+   valle y acababa en retardos diminutos → nada). La NSDF
+   normaliza CADA retardo por su energía (resultado entre -1 y 1,
+   le da igual el volumen), se SUAVIZA para quitar el grano del
+   ruido (sin eso, los hombros del pico hacen aterrizar la nota
+   medio tono más alta) y se queda con el PRIMER pico que llegue
+   cerca del máximo — ni errores de octava ni notas falsas. */
+function afinadorDetecta(buf, sampleRate) {
+  const N = buf.length;
+  let media = 0;
+  for (let i = 0; i < N; i++) media += buf[i];
+  media /= N;                                  /* los interfaces traen offset */
+  const x = new Float32Array(N);
+  let s2 = 0;
+  for (let i = 0; i < N; i++) { x[i] = buf[i] - media; s2 += x[i] * x[i]; }
+  const rms = Math.sqrt(s2 / N);
+  if (rms < 0.0015) return null;               /* silencio de verdad */
+  const W = N >> 1;                            /* ventana de análisis: 1024 */
+  const minLag = 2;   /* desde 2: un tono por encima del rango da retardo diminuto → luego lo rechazo */
+  const maxLag = Math.min(W - 1, Math.floor(sampleRate / 40));
+  /* energía de cada ventana deslizante m(n) = Σ x[n..n+W-1]² */
+  const mN = new Float64Array(maxLag + 1);
+  let acc = 0;
+  for (let i = 0; i < W; i++) acc += x[i] * x[i];
+  mN[0] = acc;
+  for (let n = 1; n <= maxLag; n++) mN[n] = mN[n - 1] - x[n - 1] * x[n - 1] + x[n + W - 1] * x[n + W - 1];
+  const m0 = mN[0];
+  /* NSDF(n) = 2·ACF(n) / (m(0) + m(n)), con la ACF anclada en la ventana 0 */
+  const nsdf = new Float32Array(maxLag + 1);
+  for (let n = minLag; n <= maxLag; n++) {
+    let acf = 0;
+    for (let j = 0; j < W; j++) acf += x[j] * x[j + n];
+    nsdf[n] = (m0 + mN[n] > 0) ? 2 * acf / (m0 + mN[n]) : 0;
+  }
+  /* suavizado (media móvil de ±5): quita el grano del ruido para
+     poder elegir picos con tranquilidad */
+  const suave = new Float32Array(maxLag + 1);
+  for (let n = minLag; n <= maxLag; n++) {
+    let s = 0, c = 0;
+    for (let k2 = -5; k2 <= 5; k2++) {
+      const i2 = n + k2;
+      if (i2 >= minLag && i2 <= maxLag) { s += nsdf[i2]; c++; }
+    }
+    suave[n] = s / c;
+  }
+  let valMax = 0;
+  for (let n = minLag; n <= maxLag; n++) if (suave[n] > valMax) valMax = suave[n];
+  /* claridad: si ni el mejor retardo se parece a sí mismo, es ruido */
+  if (valMax < 0.5) return null;
+  /* primer pico DESPUÉS de que la NSDF se vuelva negativa (así nos
+     saltamos la zona de retardos pequeños, donde todo se parece a todo) */
+  let desde = minLag;
+  while (desde < maxLag && suave[desde] > 0) desde++;
+  const umbral = 0.9 * valMax;
+  let T0 = -1;
+  for (let n = desde; n < maxLag; n++) {
+    if (suave[n] >= umbral) {
+      while (n < maxLag && suave[n + 1] > suave[n]) n++;   /* hasta la cima del pico */
+      T0 = n;
+      break;
+    }
+  }
+  if (T0 <= 0) return null;
+  /* pico afinado por interpolación parabólica */
+  const y1 = suave[T0 - 1] || 0, y2 = suave[T0], y3 = suave[T0 + 1] || 0;
+  const a = (y1 + y3 - 2 * y2) / 2, b = (y3 - y1) / 2;
+  let T = T0;
+  if (a) T = T0 - b / (2 * a);
+  const hz = sampleRate / T;
+  return (hz > 40 && hz < 1300) ? hz : null;
+}
+
+/* Pintar el resultado (o el silencio). v2.77: también pinta el nivel */
+function afinadorPinta(hz, nivel) {
+  const nota = document.getElementById('afinador-nota');
+  const hzEl = document.getElementById('afinador-hz');
+  const aguja = document.getElementById('afinador-aguja');
+  const aviso = document.getElementById('afinador-aviso');
+  const barra = document.querySelector('#afinador-nivel div');
+  if (barra) barra.style.width = Math.min(100, Math.round((nivel || 0) * 2500)) + '%';
+  document.querySelectorAll('#afinador-cuerdas span').forEach(s => s.classList.remove('sonando', 'afinada'));
+  if (!hz) {
+    nota.textContent = '–';
+    hzEl.textContent = '\u00a0';
+    aguja.style.left = '50%';
+    aguja.classList.remove('verde');
+    aviso.textContent = ((nivel || 0) >= 0.002)
+      ? 'Llega poquita señal… si tu guitarra suena, sube el potenciómetro de ENTRADA de la tarjeta.'
+      : 'Toca una cuerda al aire…';
+    return;
+  }
+  const midi = 69 + 12 * Math.log2(hz / 440);
+  const idx = Math.round(midi);
+  const cents = Math.round((midi - idx) * 100);
+  const nombre = ESCALA[((idx % 12) + 12) % 12] + (Math.floor(idx / 12) - 1);
+  nota.textContent = nombre;
+  hzEl.textContent = hz.toFixed(1) + ' Hz';
+  aguja.style.left = Math.max(0, Math.min(100, cents + 50)) + '%';
+  aguja.classList.toggle('verde', Math.abs(cents) <= 5);
+  if (Math.abs(cents) <= 5) aviso.textContent = '✓ ¡Afinada!';
+  else if (cents < 0) aviso.textContent = 'Un pelín grave — aprieta la clavija';
+  else aviso.textContent = 'Un pelín agudo — afloja la clavija';
+  /* ¿qué cuerda es? la más cercana (a menos de 2 semitonos) */
+  let mejor = -1, mejorDist = 1e9;
+  AFINADOR_CUERDAS.forEach((c, i) => {
+    const dist = Math.abs(12 * Math.log2(hz / c.f));
+    if (dist < mejorDist) { mejorDist = dist; mejor = i; }
+  });
+  if (mejor >= 0 && mejorDist < 2) {
+    const spans = document.querySelectorAll('#afinador-cuerdas span');
+    spans[mejor].classList.add('sonando');
+    if (Math.abs(cents) <= 5) spans[mejor].classList.add('afinada');
+  }
+}
+
+/* ============================================================
    v2.53 · METRÓNOMO — clic a un tempo ajustable, con acento en
    el primer tiempo del compás. El sonido sale del propio
    navegador (WebAudio, dos osciladores mu cortos), sin gongs
@@ -7639,15 +8112,12 @@ function cursorEnMisCanciones() {
 }
 
 /* Descarga la canción como archivo .chopro (para llevarla a un amigo,
-   abrirla con Songbook Pro, etc.) */
-function descargarTexto(nombre, contenido) {
+   abrirla con Songbook Pro, etc.). v2.73: también por el diálogo de
+   "Guardar como…" donde existe, para elegir la carpeta */
+async function descargarTexto(nombre, contenido) {
   const limpio = (nombre || 'cancion').replace(/[\\/:*?"<>|]/g, '').trim() || 'cancion';
   const blob = new Blob([contenido], { type: 'text/plain;charset=utf-8' });
-  const enlace = document.createElement('a');
-  enlace.href = URL.createObjectURL(blob);
-  enlace.download = limpio + '.chopro';
-  enlace.click();
-  URL.revokeObjectURL(enlace.href);
+  await guardarArchivoConDialogo(blob, limpio + '.chopro');
 }
 
 /* Descarga la canción abierta (desde el menú Cancelaciones) */
@@ -7741,6 +8211,66 @@ function avanzarPantalla(d) {
   return true;
 }
 
+/* ============================================================
+   v2.79 · GESTOS TÁCTILES para la TABLETA (sin teclado):
+   • Arrastrar el dedo a los LADOS → la letra se mueve contigo
+     a derecha/izquierda, como arrastrar un papel (en la vista
+     apaisada, donde la canción es más ancha que la pantalla).
+   • Deslizar hacia ARRIBA (en seco) → canción SIGUIENTE: el
+     mismo trabajo que hace la flecha ↓ del teclado. En
+     apaisado la letra nunca baja (el sitio sobra a los lados,
+     no hacia abajo), así que ahí el gesto vale SIEMPRE; en la
+     vista de una columna solo cuando ya estás AL FINAL de la
+     canción, para no robarle al dedo el scroll de siempre.
+   Los toques siguen siendo toques: si el dedo no se mueve, no
+   hay gesto (es un clic de toda la vida sobre un acorde/botón).
+   ============================================================ */
+(function () {
+  const zona = document.getElementById('letra');
+  if (!zona) return;
+  let x0 = 0, y0 = 0, t0 = 0, scroll0 = 0, eje = null;   /* eje: 'x', 'y' o null */
+
+  zona.addEventListener('touchstart', (ev) => {
+    if (ev.touches.length !== 1) { eje = null; return; }  /* 2 dedos = zoom: no es nuestro */
+    x0 = ev.touches[0].clientX;
+    y0 = ev.touches[0].clientY;
+    t0 = Date.now();
+    scroll0 = zona.scrollLeft;
+    eje = null;
+  }, { passive: true });
+
+  zona.addEventListener('touchmove', (ev) => {
+    if (ev.touches.length !== 1) return;
+    const dx = ev.touches[0].clientX - x0, dy = ev.touches[0].clientY - y0;
+    if (!eje) {
+      if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;    /* todavía es un toque */
+      eje = (Math.abs(dx) > Math.abs(dy)) ? 'x' : 'y';       /* gana un lado y se queda */
+      if (eje === 'x') zona.style.scrollBehavior = 'auto';   /* arrastre PEGADO al dedo, sin suavizado */
+    }
+    if (eje !== 'x') return;                 /* vertical: que el navegador haga lo de siempre */
+    if (zona.scrollWidth - zona.clientWidth < 8) return;       /* no hay ancho que recorrer */
+    ev.preventDefault();                     /* el gesto es nuestro: la letra sigue al dedo */
+    zona.scrollLeft = scroll0 - dx;
+  }, { passive: false });
+
+  zona.addEventListener('touchend', (ev) => {
+    if (eje === 'x') zona.style.scrollBehavior = '';         /* devolver el suavizado */
+    if (eje === 'y' && ev.changedTouches && ev.changedTouches.length) {
+      const dy = ev.changedTouches[0].clientY - y0;
+      const dx = ev.changedTouches[0].clientX - x0;
+      const alFinal = zona.scrollTop + zona.clientHeight >= zona.scrollHeight - 4;
+      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (esApaisado() || alFinal)) {
+        canciónSiguiente(1);                 /* deslizar arriba = canción siguiente */
+      }
+    }
+    eje = null;
+  });
+  zona.addEventListener('touchcancel', () => {
+    if (eje === 'x') zona.style.scrollBehavior = '';
+    eje = null;
+  });
+})();
+
 document.addEventListener('keydown', (ev) => {
   /* v2.55: CAPTURA de una tecla nueva para un atajo. Si el panel de
      atajos está esperando una tecla, se queda aquí: no llega a los
@@ -7766,6 +8296,8 @@ document.addEventListener('keydown', (ev) => {
     if (document.getElementById('ed-midi-mascara').classList.contains('abierto')) { cerrarEditorMidi(); return; }
     /* v2.53: el metrónomo también se cierra con Escape */
     if (document.getElementById('met-mascara').classList.contains('abierto')) { metronomoCerrar(); return; }
+    /* v2.74: el afinador también, y al cerrar para la escucha */
+    if (document.getElementById('afinador-mascara').classList.contains('abierto')) { afinadorCerrar(); return; }
     /* v2.55: el panel de atajos también, mientras se edita y siempre */
     if (atajosAbiertos) { atajosCerrar(); return; }
     /* la cortina de canciones también se esconde con Escape (v2.17) */
