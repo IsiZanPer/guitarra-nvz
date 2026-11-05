@@ -2463,7 +2463,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.82';
+const VERSION = '2.83';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -3133,7 +3133,11 @@ function altoDisponibleCuerpo(cont, cuerpo, cs) {
   const rectZ = cont.getBoundingClientRect();
   const rectC = cuerpo.getBoundingClientRect();
   const padBottom = parseFloat(cs.paddingBottom) || 0;
-  const disponible = rectZ.bottom - rectC.top - padBottom * z;
+  /* v2.83: un poco más de AIRE abajo — el último renglón no debe
+     quedar pegado al borde inferior de la pantalla; el extra absorbe
+     también los píxeles de redondeo */
+  const AIRE_ABAJO = 12;
+  const disponible = rectZ.bottom - rectC.top - (padBottom + AIRE_ABAJO) * z;
   return Math.max(0, disponible);   /* en píxeles visuales */
 }
 
@@ -8888,6 +8892,34 @@ window.addEventListener('resize', () => {
     ajustarLineasLargas();
   }, 200);
 });
+
+/* ============================================================
+   v2.83 · VIGILANTE del tamaño de la CAJA de la letra: hasta
+   ahora solo se reajustaba al cambiar la VENTANA, pero la caja
+   también cambia cuando aparece/desaparece la barrita del
+   auto-scroll (o la del MP3): el alto fijo de las columnas se
+   quedaba viejo y el ÚLTIMO renglón quedaba cortado por la
+   mitad. Este vigilante reajusta las líneas al momento.
+   ============================================================ */
+if (window.ResizeObserver) {
+  let cajaVigilada = { w: 0, h: 0, pend: null, primera: true };
+  new ResizeObserver(() => {
+    const zona = document.getElementById('letra');
+    if (!zona) return;
+    const w = zona.clientWidth, h = zona.clientHeight;
+    if (cajaVigilada.primera) {                /* el primer aviso es el propio observe: solo anotar */
+      cajaVigilada = { w, h, pend: null, primera: false };
+      return;
+    }
+    if (Math.abs(w - cajaVigilada.w) < 2 && Math.abs(h - cajaVigilada.h) < 2) return;
+    if (cajaVigilada.pend) clearTimeout(cajaVigilada.pend);
+    cajaVigilada.pend = setTimeout(() => {
+      compensarZoomLetra();
+      ajustarLineasLargas();
+      cajaVigilada = { w: zona.clientWidth, h: zona.clientHeight, pend: null, primera: false };
+    }, 150);
+  }).observe(document.getElementById('letra'));
+}
 
 pintarBiblioteca();
 seleccionarCancion(0);
