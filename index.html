@@ -2463,7 +2463,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.81';
+const VERSION = '2.82';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -8236,11 +8236,13 @@ function avanzarPantalla(d) {
    • Deslizar hacia ARRIBA (en seco) → canción SIGUIENTE y
      deslizar hacia ABAJO → canción ANTERIOR: el mismo trabajo
      que hacen las flechas ↓/↑ del teclado. La regla la pone la
-     GEOMETRÍA real: si la letra se desplaza hacia abajo (vista
-     de una columna o pantalla estrecha), los gestos verticales
-     solo valen al FINAL (arriba) o al PRINCIPIO (abajo), para
-     no robarle al dedo el scroll de siempre; si la letra no
-     baja (apaisada en horizontal), valen SIEMPRE.
+     GEOMETRÍA real: si el DEDO puede desplazar la letra hacia
+      abajo (overflow-y auto y letra más alta que la pantalla:
+      vista de una columna o pantalla estrecha), los gestos
+      verticales solo valen al FINAL (arriba) o al PRINCIPIO
+      (abajo), para no robarle al dedo el scroll de siempre; si
+      la letra no baja con el dedo (apaisada en horizontal,
+      overflow-y hidden), valen SIEMPRE.
    Los toques siguen siendo toques: si el dedo no se mueve, no
    hay gesto (es un clic de toda la vida sobre un acorde/botón).
    ============================================================ */
@@ -8284,18 +8286,24 @@ function avanzarPantalla(d) {
       const dx = ev.changedTouches[0].clientX - x0;
       const alFinal = zona.scrollTop + zona.clientHeight >= zona.scrollHeight - 4;
       const alPrincipio = zona.scrollTop <= 4;
-      /* la regla la pone la GEOMETRÍA real, no la vista elegida: si la
-         letra se desplaza hacia abajo (pantalla estrecha o vista de
-         una columna), los gestos verticales solo valen cuando el dedo
-         ya no puede hacer más scroll (al final / al principio); si la
-         letra no baja (apaisada en horizontal), valen SIEMPRE */
-      const sinScrollVertical = zona.scrollHeight - zona.clientHeight <= 8;
+      /* la regla la pone la GEOMETRÍA real: la pregunta es si el DEDO
+         puede desplazar la letra hacia abajo — eso pasa solo cuando el
+         CSS permite el scroll vertical (overflow-y auto/scroll) Y la
+         letra de verdad es más alta que la pantalla (vista de una
+         columna o pantalla estrecha). En ese caso los gestos
+         verticales solo valen cuando el scroll ya no puede más (al
+         final / al principio). En apaisado la letra NO baja con el
+         dedo (overflow-y hidden — aunque haya algún píxel fantasma de
+         margen), así que ahí valen SIEMPRE */
+      const csZ = getComputedStyle(zona);
+      const puedeBajar = csZ.overflowY !== 'hidden' &&
+                         zona.scrollHeight - zona.clientHeight > 8;
       /* deslizar ARRIBA = canción siguiente (como la flecha ↓) */
-      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (sinScrollVertical || alFinal)) {
+      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alFinal)) {
         canciónSiguiente(1);
       }
       /* deslizar ABAJO = canción ANTERIOR (como la flecha ↑) */
-      else if (dy > 60 && Math.abs(dy) > Math.abs(dx) && (sinScrollVertical || alPrincipio)) {
+      else if (dy > 60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alPrincipio)) {
         canciónSiguiente(-1);
       }
     }
