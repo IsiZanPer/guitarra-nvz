@@ -2008,6 +2008,16 @@
 </style>
 </head>
 <body>
+<script>
+/* v2.86 · EL TEMA SE RECUERDA — esto corre ANTES de pintarse nada
+   del cuerpo: si la última vez el tema era claro, se pone AQUÍ y
+   la página entera (cabecera, letra, diagramas) nace ya clara,
+   sin flash del tema oscuro. La elección la guarda alternarTema(). */
+try {
+  if (localStorage.getItem('guitarra-nvz-tema') === 'claro')
+    document.body.classList.add('tema-claro');
+} catch (e) { /* sin guardar disponible: tema oscuro por defecto */ }
+</script>
 
 <header>
   <h1>Guitarra <span>NVZ</span><small class="chip-version" id="chip-version">v1.0</small></h1>
@@ -2480,7 +2490,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.85';
+const VERSION = '2.86';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -4301,6 +4311,12 @@ function cargarFuentes() {
 let columnasActuales = 1;
 const CLAVE_VISTA = 'guitarra-nvz-vista';
 
+/* ---------- Tema claro / oscuro con memoria (v2.86) ----------
+   'claro' u 'oscuro' en localStorage; al abrir, el bloque de
+   arriba del todo ya aplica el guardado. La clave vive aquí
+   por orden y claridad, como las demás CLAVE_* del programa */
+const CLAVE_TEMA = 'guitarra-nvz-tema';
+
 /* ============================================================
    PARTE 2.6 · Escucha MIDI: preset DE BIAS FX 2 (v2.8)
    El pedal manda Program Change por loopMIDI y Bias FX 2 cambia
@@ -5011,6 +5027,11 @@ function resetTransporte() { transporte = 0; actualizarChip(); pintarCancion(); 
 
 function alternarTema() {
   document.body.classList.toggle('tema-claro');
+  /* v2.86: la elección queda guardada y al abrir se recupera */
+  try {
+    localStorage.setItem(CLAVE_TEMA,
+      document.body.classList.contains('tema-claro') ? 'claro' : 'oscuro');
+  } catch (e) { /* sin guardar disponible: no pasa nada */ }
   pintarDiagramas();  // los SVG se redibujan con los nuevos colores
   if (cancionActual) resaltarAcorde(null);
 }
