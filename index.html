@@ -59,7 +59,13 @@
     font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
     background: var(--fondo);
     color: var(--texto);
+    /* v2.84: en el iPad (Safari) 100vh mide MÁS que la pantalla
+       visible (sus barras van ENCIMA del final de la página) y
+       como la app no scrollula, el último renglón quedaba cortado.
+       dvh = la altura que de verdad se ve (con reserva para
+       navegadores viejos que no la entienden) */
     height: 100vh;
+    height: 100dvh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -519,7 +525,7 @@
     column-gap: 32px;
     column-rule: 1px solid var(--borde);
   }
-  #letra.columnas-2 > *, #letra.columnas-3 > * { break-inside: avoid; }
+  #letra.columnas-2 > *, #letra.columnas-3 > * { break-inside: avoid; -webkit-column-break-inside: avoid; }
 
   /* Modo APAISADO (automático, v2.1+2.7): el NÚMERO de columnas se
      calcula en JS para llenar TODO el ancho disponible (column-count,
@@ -544,7 +550,7 @@
     column-fill: auto;   /* llena una columna hasta abajo y pasa a la otra */
     height: 100%;
   }
-  #letra.apaisado .cuerpo-cancion > * { break-inside: avoid; }
+  #letra.apaisado .cuerpo-cancion > * { break-inside: avoid; -webkit-column-break-inside: avoid; }
   #letra.apaisado::-webkit-scrollbar { height: 10px; }
   /* Las líneas de letra NO SE PARTEN en apaisado: si alguna no cabe,
      el ancho de columna se adapta (menos columnas, más anchas) y como
@@ -1032,7 +1038,7 @@
   }
   /* v2.45: modo maximizado (botón ⤢) */
   #gp-visor-mascara.max { padding: 0; }
-  #gp-visor-mascara.max #gp-visor-panel { width: 100vw; height: 100vh; border-radius: 0; border: none; }
+  #gp-visor-mascara.max #gp-visor-panel { width: 100vw; height: 100vh; height: 100dvh; border-radius: 0; border: none; }
 
   /* ---------- AFINADOR (v2.74): nota + desvío + cuerda ---------- */
   #afinador-mascara {
@@ -1658,6 +1664,7 @@
     border-radius: 0;
     width: 100vw;
     height: 100vh;
+    height: 100dvh;   /* v2.84: iPad (Safari): altura real visible */
     max-height: none;
     display: flex;
     flex-direction: column;
@@ -2463,7 +2470,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.83';
+const VERSION = '2.84';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
