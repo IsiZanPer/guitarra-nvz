@@ -535,6 +535,12 @@
      las flechas ↓↑ pantalla a pantalla */
   #letra.apaisado {
     height: 100%;
+    /* v2.85: FLEX — el reparto vertical lo hace el CSS: cabecera arriba
+       y el cuerpo con TODO lo que queda. Hasta ahora el JS clavaba una
+       altura en píxeles, y en iOS (Chrome del iPad) basta la mínima
+       discrepancia para que el sobrante acabara en la franja recortada */
+    display: flex;
+    flex-direction: column;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-behavior: smooth;
@@ -543,12 +549,14 @@
      (no en #letra). Así, cuando la canción usa menos columnas
      de las que caben, el bloque se estrecha y queda CENTRADO en
      la pantalla, igual que el título y el artista */
+  #letra.apaisado .cabeza-cancion { flex: none; }
   #letra.apaisado .cuerpo-cancion {
     column-count: var(--num-columnas, 2);
     column-gap: 46px;
     column-rule: 1px solid var(--borde);
     column-fill: auto;   /* llena una columna hasta abajo y pasa a la otra */
-    height: 100%;
+    flex: 1 1 0;         /* v2.85: la altura que queda, EXACTA */
+    min-height: 0;
   }
   #letra.apaisado .cuerpo-cancion > * { break-inside: avoid; -webkit-column-break-inside: avoid; }
   #letra.apaisado::-webkit-scrollbar { height: 10px; }
@@ -1846,8 +1854,10 @@
        altura fija parte el sobrante en columnas invisibles hacia la
        derecha (letra inalcanzable). column-count: auto APAGA el
        multi-columna y el texto baja en flujo normal, con scroll
-       vertical de verdad */
+       vertical de verdad. v2.85: y display block, porque el flex de
+       apaisado encima es cosa de pantalla ancha */
     #letra.apaisado {
+      display: block;
       column-count: auto;
       column-gap: normal;
       column-rule: none;
@@ -2470,7 +2480,7 @@
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.84';
+const VERSION = '2.85';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -3135,18 +3145,8 @@ function anchoVisualLinea(el) {
    (con la lupa incluida); al escribirlo como px internos se
    divide por el zoom.
    ============================================================ */
-function altoDisponibleCuerpo(cont, cuerpo, cs) {
-  const z = parseFloat(getComputedStyle(cont).zoom) || 1;
-  const rectZ = cont.getBoundingClientRect();
-  const rectC = cuerpo.getBoundingClientRect();
-  const padBottom = parseFloat(cs.paddingBottom) || 0;
-  /* v2.83: un poco más de AIRE abajo — el último renglón no debe
-     quedar pegado al borde inferior de la pantalla; el extra absorbe
-     también los píxeles de redondeo */
-  const AIRE_ABAJO = 12;
-  const disponible = rectZ.bottom - rectC.top - (padBottom + AIRE_ABAJO) * z;
-  return Math.max(0, disponible);   /* en píxeles visuales */
-}
+/* v2.85: altoDisponibleCuerpo fuera de servicio — ya no hay altura
+   clavada por JS (el flex del CSS da al cuerpo la altura exacta) */
 
 function trocearLineasApaisado() {
   const cont = document.getElementById('letra');
@@ -3289,15 +3289,9 @@ function ajustarLineasLargas() {
     TAM_PIEZA = Math.max(240 * z, colW);                      /* el troceo queda como ÚLTIMO recurso */
     trocearLineasApaisado();
     void cont.offsetHeight;    /* reflow con el número de columnas nuevo */
-    /* v2.26 + v2.28: el cuerpo toma la altura que QUEDA VISIBLE
-       para él (desde donde empieza, bajo la cabecera, hasta el
-       borde inferior — sin contar el relleno de abajo).
-       En píxeles visuales, convertido a px internos ↓ */
-    const cuerpoCol = cont.querySelector('.cuerpo-cancion');
-    if (cuerpoCol) {
-      const altoVis = altoDisponibleCuerpo(cont, cuerpoCol, csL);
-      cuerpoCol.style.height = Math.round(altoVis / z) + 'px';
-    }
+    /* v2.85: nada de clavar altura en píxeles — el flex del CSS le da
+       al cuerpo EXACTAMENTE la altura que queda visible, en cualquier
+       motor (el clavo px era el origen del corte por abajo en iOS) */
   }
 
   /* 0b) preparar las líneas para medir su ancho NATURAL */
@@ -3362,22 +3356,23 @@ function centrarColumnasApaisado() {
   const anchoCont = rectC.width - padXv;
   const n = parseInt(document.documentElement.style.getPropertyValue('--num-columnas'), 10) || 2;
   const colW = Math.max(120 * z, (anchoCont - (n - 1) * GAPvis) / n);
-  /* v2.28: la altura de columna es la que queda VISIBLE para el
-     cuerpo (bajo la cabecera), no la de toda la zona */
-  const altoCol = altoDisponibleCuerpo(cont, cuerpo, cs);
-  /* ¿cuánta "tela"? medición con UNA sola columna
-     (altura AUTO: con height:100% del CSS el scroll mide solo
-     la página y engañaría). scrollHeight es en px internos:
-     para comparar con las medidas visuales se escala × zoom */
+  /* ¿cuánta "tela"? medición con UNA sola columna y altura natural:
+     se suelta el FLEX un instante (con flex, el height inline no
+     manda y scrollHeight engañaría) y se mide el contenido entero */
   cuerpo.style.width = '';
+  cuerpo.style.flex = '0 0 auto';
   cuerpo.style.columnCount = '1';
   cuerpo.style.height = 'auto';
   void cuerpo.offsetHeight;
   const Htotal = cuerpo.scrollHeight * z;
-  /* restaurar el estado de columna y medir cuántas llenan */
-  cuerpo.style.height = Math.round(altoCol / z) + 'px';
+  /* restaurar: la altura vuelve a mandarla el flex del CSS (v2.85) */
+  cuerpo.style.height = '';
+  cuerpo.style.flex = '';
   cuerpo.style.columnCount = '';
   void cuerpo.offsetHeight;
+  /* la altura de columna es la que el cuerpo tiene AHORA de verdad
+     (visible, bajo la cabecera) — en píxeles visuales */
+  const altoCol = cuerpo.getBoundingClientRect().height;
   const k = Math.min(n, Math.max(1, Math.ceil(Htotal / altoCol)));
   if (k >= n) {
     /* usa TODAS las columnas: ancho natural de siempre */
@@ -8240,38 +8235,73 @@ function avanzarPantalla(d) {
 }
 
 /* ============================================================
-   v2.79/2.80 · GESTOS TÁCTILES para la TABLETA (sin teclado):
-   • Arrastrar el dedo a los LADOS → la letra se mueve contigo
-     a derecha/izquierda, como arrastrar un papel (en la vista
-     apaisada, donde la canción es más ancha que la pantalla).
-   • Deslizar hacia ARRIBA (en seco) → canción SIGUIENTE y
-     deslizar hacia ABAJO → canción ANTERIOR: el mismo trabajo
-     que hacen las flechas ↓/↑ del teclado. La regla la pone la
-     GEOMETRÍA real: si el DEDO puede desplazar la letra hacia
-      abajo (overflow-y auto y letra más alta que la pantalla:
-      vista de una columna o pantalla estrecha), los gestos
-      verticales solo valen al FINAL (arriba) o al PRINCIPIO
-      (abajo), para no robarle al dedo el scroll de siempre; si
-      la letra no baja con el dedo (apaisada en horizontal,
-      overflow-y hidden), valen SIEMPRE.
-   Los toques siguen siendo toques: si el dedo no se mueve, no
-   hay gesto (es un clic de toda la vida sobre un acorde/botón).
+   v2.79/2.80/2.85 · GESTOS TÁCTILES para la TABLETA:
+   • Arrastrar con UN dedo a los LADOS → la letra se mueve
+     contigo a derecha/izquierda, como arrastrar un papel
+     (en la vista apaisada, donde la canción es más ancha
+     que la pantalla).
+   • v2.85: deslizar con DOS dedos hacia ARRIBA (en seco) →
+     canción SIGUIENTE, y con DOS dedos hacia ABAJO → canción
+     ANTERIOR. Con dos dedos no choca con nada del sistema:
+     salir de pantalla completa, lupa y scroll van con UN dedo.
+     La regla la pone la GEOMETRÍA real: si el dedo puede
+     desplazar la letra hacia abajo (overflow-y auto y letra
+     más alta que la pantalla: vista de una columna o pantalla
+     estrecha), los gestos verticales solo valen al FINAL
+     (arriba) o al PRINCIPIO (abajo); si la letra no baja con
+     el dedo (apaisada en horizontal), valen SIEMPRE.
+   Los toques siguen siendo toques: si el dedo no se mueve,
+   no hay gesto (clic de toda la vida sobre un acorde/botón).
    ============================================================ */
 (function () {
   const zona = document.getElementById('letra');
   if (!zona) return;
-  let x0 = 0, y0 = 0, t0 = 0, scroll0 = 0, eje = null;   /* eje: 'x', 'y' o null */
+  let x0 = 0, y0 = 0, scroll0 = 0, eje = null;    /* eje: 'x', 'y' o null */
+  let dedos = 0;                                  /* 0, 1 o 2: dedos del gesto en curso */
+  let x2 = 0, y2 = 0, x2u = 0, y2u = 0;           /* 2 dedos: centro de inicio y último centro */
+
+  /* el punto MEDIO de los dedos que quedan (para el gesto doble) */
+  const centro = (ev) => {
+    let x = 0, y = 0;
+    const n = ev.touches.length || 1;
+    for (let i = 0; i < ev.touches.length; i++) { x += ev.touches[i].clientX; y += ev.touches[i].clientY; }
+    return { x: x / n, y: y / n };
+  };
 
   zona.addEventListener('touchstart', (ev) => {
-    if (ev.touches.length !== 1) { eje = null; return; }  /* 2 dedos = zoom: no es nuestro */
-    x0 = ev.touches[0].clientX;
-    y0 = ev.touches[0].clientY;
-    t0 = Date.now();
-    scroll0 = zona.scrollLeft;
-    eje = null;
+    if (dedos === 2) return;                 /* gesto doble en curso: ignorar nuevos apoyos */
+    if (ev.touches.length === 1) {           /* un dedo: arrastre lateral / toque */
+      dedos = 1;
+      x0 = ev.touches[0].clientX;
+      y0 = ev.touches[0].clientY;
+      scroll0 = zona.scrollLeft;
+      eje = null;
+    } else if (ev.touches.length === 2) {    /* segundo dedo: gesto DOBLE */
+      eje = null;
+      if (zona.style.scrollBehavior) zona.style.scrollBehavior = '';
+      dedos = 2;
+      const c = centro(ev);
+      x2 = c.x; y2 = c.y; x2u = c.x; y2u = c.y;
+    } else {                                 /* 3 o más: nada de nada */
+      dedos = 0; eje = null;
+    }
   }, { passive: true });
 
   zona.addEventListener('touchmove', (ev) => {
+    /* ——— DOS dedos: decidir el eje con el punto medio ——— */
+    if (dedos === 2) {
+      if (ev.touches.length !== 2) return;   /* uno se ha ido: aborta al levantar */
+      const c = centro(ev);
+      x2u = c.x; y2u = c.y;
+      if (!eje) {
+        const dx = c.x - x2, dy = c.y - y2;
+        if (Math.abs(dx) < 12 && Math.abs(dy) < 12) return;   /* todavía es un apoyo */
+        eje = (Math.abs(dx) > Math.abs(dy)) ? 'x' : 'y';
+        if (eje === 'x') eje = null;        /* lateral a dos dedos: del sistema, no molestar */
+      }
+      return;
+    }
+    /* ——— UN dedo: el arrastre lateral de siempre ——— */
     if (ev.touches.length !== 1) return;
     const dx = ev.touches[0].clientX - x0, dy = ev.touches[0].clientY - y0;
     if (!eje) {
@@ -8280,9 +8310,9 @@ function avanzarPantalla(d) {
       if (eje === 'x') zona.style.scrollBehavior = 'auto';   /* arrastre PEGADO al dedo, sin suavizado */
     }
     if (eje !== 'x') return;                 /* vertical: que el navegador haga lo de siempre */
-    /* v2.80: el arrastre a los lados SOLO si la letra se desplaza
+    /* el arrastre a los lados SOLO si la letra se desplaza
        de verdad hacia los lados (mira el CSS real: en pantallas
-       estrechas la vista apaisada se vuelve vertical, y ahí el
+       estrechas la vista apaisada se vuelve vertical, y aí el
        arrastre lateral no debe secuestrar nada) */
     if (getComputedStyle(zona).overflowX !== 'auto') return;
     if (zona.scrollWidth - zona.clientWidth < 8) return;       /* no hay ancho que recorrer */
@@ -8291,38 +8321,39 @@ function avanzarPantalla(d) {
   }, { passive: false });
 
   zona.addEventListener('touchend', (ev) => {
-    if (eje === 'x') zona.style.scrollBehavior = '';         /* devolver el suavizado */
-    if (eje === 'y' && ev.changedTouches && ev.changedTouches.length) {
-      const dy = ev.changedTouches[0].clientY - y0;
-      const dx = ev.changedTouches[0].clientX - x0;
-      const alFinal = zona.scrollTop + zona.clientHeight >= zona.scrollHeight - 4;
-      const alPrincipio = zona.scrollTop <= 4;
-      /* la regla la pone la GEOMETRÍA real: la pregunta es si el DEDO
-         puede desplazar la letra hacia abajo — eso pasa solo cuando el
-         CSS permite el scroll vertical (overflow-y auto/scroll) Y la
-         letra de verdad es más alta que la pantalla (vista de una
-         columna o pantalla estrecha). En ese caso los gestos
-         verticales solo valen cuando el scroll ya no puede más (al
-         final / al principio). En apaisado la letra NO baja con el
-         dedo (overflow-y hidden — aunque haya algún píxel fantasma de
-         margen), así que ahí valen SIEMPRE */
-      const csZ = getComputedStyle(zona);
-      const puedeBajar = csZ.overflowY !== 'hidden' &&
-                         zona.scrollHeight - zona.clientHeight > 8;
-      /* deslizar ARRIBA = canción siguiente (como la flecha ↓) */
-      if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alFinal)) {
-        canciónSiguiente(1);
+    /* ——— gesto DOBLE: actúa al levantar el ÚLTIMO dedo ——— */
+    if (dedos === 2) {
+      if (ev.touches.length > 0) return;             /* aún queda un dedo: no es el final */
+      if (eje === 'y') {
+        const dy = y2u - y2, dx = x2u - x2;
+        /* la regla la pone la GEOMETRÍA real: ¿el dedo puede desplazar
+           la letra hacia abajo? (overflow-y auto/scroll Y letra más
+           alta que la pantalla). Si puede, los gestos verticales solo
+           valen al final / al principio; si no puede (apaisada), valen SIEMPRE */
+        const csZ = getComputedStyle(zona);
+        const puedeBajar = csZ.overflowY !== 'hidden' &&
+                           zona.scrollHeight - zona.clientHeight > 8;
+        const alFinal = zona.scrollTop + zona.clientHeight >= zona.scrollHeight - 4;
+        const alPrincipio = zona.scrollTop <= 4;
+        /* dos dedos hacia ARRIBA = canción siguiente (la flecha ↓) */
+        if (dy < -60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alFinal)) {
+          canciónSiguiente(1);
+        }
+        /* dos dedos hacia ABAJO = canción anterior (la flecha ↑) */
+        else if (dy > 60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alPrincipio)) {
+          canciónSiguiente(-1);
+        }
       }
-      /* deslizar ABAJO = canción ANTERIOR (como la flecha ↑) */
-      else if (dy > 60 && Math.abs(dy) > Math.abs(dx) && (!puedeBajar || alPrincipio)) {
-        canciónSiguiente(-1);
-      }
+      dedos = 0; eje = null;
+      return;
     }
-    eje = null;
+    /* ——— dedo único: fin del arrastre / reset ——— */
+    if (eje === 'x') zona.style.scrollBehavior = '';         /* devolver el suavizado */
+    dedos = 0; eje = null;
   });
   zona.addEventListener('touchcancel', () => {
     if (eje === 'x') zona.style.scrollBehavior = '';
-    eje = null;
+    dedos = 0; eje = null;
   });
 })();
 
