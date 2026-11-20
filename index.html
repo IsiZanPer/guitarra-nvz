@@ -502,6 +502,33 @@
     font-size: var(--tam-artista, 15px);
     font-family: var(--fuente-head, inherit);
   }
+  /* v2.90 · BPM de la canción: pastilla bajo el artista. Clic para
+     editarlo ahí mismo (Enter guarda, Escape deja lo de antes) */
+  .bpm-cancion {
+    display: inline-block;
+    margin-top: 9px;
+    padding: 2px 12px 3px;
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+    font-size: 14px;
+    color: var(--texto-suave);
+    cursor: pointer;
+    user-select: none;
+  }
+  .bpm-cancion:hover { border-color: var(--acento); color: var(--texto); }
+  .bpm-cancion.puesto { border-color: var(--acento); color: var(--texto); }
+  .bpm-cancion input {
+    width: 66px;
+    margin: 0 0 0 2px;
+    padding: 1px 5px;
+    border: 1px solid var(--acento);
+    border-radius: 6px;
+    background: var(--panel);
+    color: var(--texto);
+    font-size: 14px;
+    text-align: center;
+  }
+  .bpm-cancion input.mal { border-color: #e05252; }
   /* v2.70: la tarjeta de una ficha Guitar Pro */
   #letra .ficha-gp {
     margin: 26px auto 0;
@@ -2218,6 +2245,8 @@ try {
     </div>
     <input id="editor-titulo" placeholder="Título de la canción" maxlength="80">
     <input id="editor-artista" placeholder="Artista" maxlength="80">
+    <!-- v2.90: tempo de la canción (se ve en la cabecera como ♩ = 120) -->
+    <input id="editor-bpm" type="number" min="30" max="240" step="1" inputmode="numeric" placeholder="BPM de la canción (opcional) — el tempo para practicar" title="Pulsos por minuto (entre 30 y 240) · opcional">
     <input id="editor-preset" list="lista-presets" placeholder="Preset de Bias FX 2 para esta canción (nombre tal cual sale en Bias — opcional)" maxlength="60">
     <datalist id="lista-presets"></datalist>
     <!-- v2.36: herramientas del editor -->
@@ -2490,7 +2519,7 @@ try {
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.86';
+const VERSION = '2.90';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -2941,6 +2970,69 @@ function parsear(texto) {
   return resultado;
 }
 
+/* ============================================================
+   v2.90 · BPM DE LA CANCIÓN — pastilla "♩ = 120" en la
+   cabecera (bajo el artista). Se guarda EN LA FICHA de la
+   canción (campo bpm) así que viaja con ella en las copias de
+   seguridad. Un clic la convierte en una cajita para escribirlo:
+   Enter guarda, Escape deja lo de antes, borrarla lo quita.
+   El metrónomo, al abrirse, coge el BPM de la canción abierta.
+   ============================================================ */
+function bpmDeCancion() {
+  const n = cancionActual ? parseInt(cancionActual.bpm, 10) : NaN;
+  return (n >= 30 && n <= 240) ? n : 0;
+}
+
+function pastillaBpm() {
+  const n = bpmDeCancion();
+  const chip = document.createElement('div');
+  chip.className = 'bpm-cancion' + (n ? ' puesto' : '');
+  chip.textContent = '♩ = ' + (n || '—');
+  chip.title = n
+    ? 'Tempo de esta canción: ' + n + ' BPM · clic para cambiarlo'
+    : 'Pon el tempo (BPM) de esta canción · clic para escribirlo';
+  chip.onclick = () => editarBpmCabeza(chip);
+  return chip;
+}
+
+function editarBpmCabeza(chip) {
+  if (!cancionActual || chip.classList.contains('editando')) return;
+  const antes = bpmDeCancion();
+  chip.classList.add('editando');
+  chip.textContent = '♩ = ';
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.min = '30'; inp.max = '240'; inp.step = '1';
+  inp.value = antes || '';
+  inp.title = 'Entre 30 y 240 BPM · Enter guarda · Escape deja lo de antes';
+  chip.appendChild(inp);
+  inp.focus(); inp.select();
+  let terminado = false;
+  const acabar = (guardar) => {
+    if (terminado) return;
+    if (guardar && inp.value.trim() !== '') {
+      const n = parseInt(inp.value, 10);
+      if (isNaN(n) || n < 30 || n > 240) { inp.classList.add('mal'); inp.focus(); return; }
+      cancionActual.bpm = n;
+    } else if (guardar) {
+      delete cancionActual.bpm;   /* vaciarla quita el BPM de la canción */
+    }
+    terminado = true;
+    if (guardar) {
+      guardarAlmacen();
+      /* el metrónomo, si está abierto, pasa a este tempo */
+      if (cancionActual.bpm) document.getElementById('met-bpm').value = cancionActual.bpm;
+    }
+    pintarCancion();
+  };
+  inp.addEventListener('keydown', (ev) => {
+    ev.stopPropagation();
+    if (ev.key === 'Enter') { ev.preventDefault(); acabar(true); }
+    else if (ev.key === 'Escape') { ev.preventDefault(); acabar(false); }
+  });
+  inp.addEventListener('blur', () => acabar(true));
+  inp.addEventListener('click', (ev) => ev.stopPropagation());
+}
+
 /* Pinta la canción actual en la zona central */
 function pintarCancion() {
   const cont = document.getElementById('letra');
@@ -2986,6 +3078,8 @@ function pintarCancion() {
       p.textContent = artista;
       act.appendChild(p);
     }
+    /* v2.90: tempo de la canción, bajo el artista */
+    act.appendChild(pastillaBpm());
     cab.appendChild(act);
     /* ¿quién va después? — sólo si HAY lista abierta, la canción está
        dentro de ella y no es la última */
@@ -4437,7 +4531,8 @@ function actualizarChipMidi() {
     const sinDecisionGemelos = gemelos.length > 1 && !biasElegidos[claveElegidos(gemelos)];
     /* v2.60: icono y etiqueta con clases de tamaño propio
        (el 🎸 más grande, la etiqueta un pelín mayor) */
-    let txt = '<span class="ficha-icono">🎸</span> <span class="ficha-label">Bias:</span> <span class="preset-activo">' + escaparHtml(nombre) + '</span>';
+    const esX = (asistenteBias.aplicacion || '').indexOf('BIAS X') !== -1;
+    let txt = '<span class="ficha-icono">🎸</span> <span class="ficha-label">' + (esX ? 'Bias X' : 'Bias') + ':</span> <span class="preset-activo">' + escaparHtml(nombre) + '</span>';
     if (sinDecisionGemelos) {
       txt += ' <span class="gemelo-probe" title="Este nombre corto encaja con VARIOS presets gemelos (' +
              escaparHtml(gemelos.join(' / ')) + '). Clic aquí para decir cuál lleva Bias abierto (se recuerda)">?</span>';
@@ -4462,19 +4557,19 @@ function actualizarChipMidi() {
       }
     }
     chip.innerHTML = txt;
-    chip.title = 'Preset de Bias FX 2 (leído de la ventana de Bias)\nPreset: ' + nombre +
+    chip.title = 'Preset de ' + (esX ? 'BIAS X' : 'Bias FX 2') + ' (leído de la ventana de Bias)\nPreset: ' + nombre +
       (sinDecisionGemelos ? '\nⓘ el nombre corto encaja con varios gemelos: dime cuál llevas (clic para el panel)' : '') +
       ' · clic para el panel';
     return;
   }
   if (asistenteBias.vivo && asistenteBias.bias === 'minimizado') {
     chip.textContent = '⚡ Bias minimizado';
-    chip.title = 'Bias FX 2 está abierto pero MINIMIZADO. Despliega su ventana (no hace falta que quede encima de todo) para que el asistente pueda leer el nombre del preset · clic: panel';
+    chip.title = 'Bias (X o FX 2) está abierto pero MINIMIZADO. Despliega su ventana (no hace falta que quede encima de todo) para que el asistente pueda leer el nombre del preset · clic: panel';
     return;
   }
   if (asistenteBias.vivo && asistenteBias.bias === 'cerrada') {
     chip.textContent = '⚡ Bias no abierto';
-    chip.title = 'El asistente está vivo pero Bias FX 2 no está en marcha. Clic: panel';
+    chip.title = 'El asistente está vivo pero no hay ningún Bias en marcha. Clic: panel';
     return;
   }
 
@@ -4560,7 +4655,7 @@ function repintarAsistenteEn(cuerpo) {
   }
 
   if (asistenteBias.bias === 'minimizado') {
-    estado.textContent = 'Bias FX 2 está abierto pero MINIMIZADO.';
+    estado.textContent = ((asistenteBias.aplicacion || '').indexOf('BIAS X') !== -1 ? 'BIAS X' : 'Bias FX 2') + ' está abierto pero MINIMIZADO.';
     cuerpo.appendChild(estado);
     const pistaMin = document.createElement('div');
     pistaMin.className = 'pista';
@@ -4569,11 +4664,11 @@ function repintarAsistenteEn(cuerpo) {
     return;
   }
   if (asistenteBias.bias === 'cerrada') {
-    estado.textContent = 'El asistente está en marcha, pero Bias FX 2 no está abierto.';
+    estado.textContent = 'El asistente está en marcha, pero no hay ningún Bias abierto.';
     cuerpo.appendChild(estado);
     const pista = document.createElement('div');
     pista.className = 'pista';
-    pista.textContent = 'Abre Bias FX 2 y el nombre del preset aparecerá aquí solo.';
+    pista.textContent = 'Abre BIAS X (o Bias FX 2) y el nombre del preset aparecerá aquí solo.';
     cuerpo.appendChild(pista);
     return;
   }
@@ -4584,7 +4679,7 @@ function repintarAsistenteEn(cuerpo) {
     return;
   }
 
-  estado.innerHTML = 'Bias FX 2 lleva el <b>' + escaparHtml(presetEfectivo()) + '</b> cargado ahora mismo';
+  estado.innerHTML = ((asistenteBias.aplicacion || '').indexOf('BIAS X') !== -1 ? 'BIAS X' : 'Bias FX 2') + ' lleva el <b>' + escaparHtml(presetEfectivo()) + '</b> cargado ahora mismo';
   cuerpo.appendChild(estado);
 
   /* v2.58: nombre AMBIGUO (gemelos) — el OCR solo ve el principio que
@@ -4884,7 +4979,7 @@ function quitarPresetDeCancion() {
    app lo pregunta cada 2 segundos.
    ============================================================ */
 const URL_ASISTENTE = 'http://127.0.0.1:8897/preset.json';
-let asistenteBias = { vivo: false, bias: 'desconocido', preset: '', alternativas: [], ultimo: 0 };
+let asistenteBias = { vivo: false, bias: 'desconocido', preset: '', aplicacion: '', alternativas: [], ultimo: 0 };
 
 /* v2.58: NOMBRES GEMELOS. Cuando el OCR ve un trozo de nombre que
    encaja con VARIOS presets del disco (Bias corta su pastilla justo
@@ -4946,6 +5041,8 @@ async function preguntarAsistente() {
     asistenteBias.vivo = true;
     asistenteBias.bias = d.bias || 'desconocido';
     asistenteBias.preset = (d.preset || '').trim();
+    /* v2.89: qué Bias está sonando (BIAS X o Bias FX 2) — lo dice el servidor */
+    asistenteBias.aplicacion = (d.aplicacion || '').trim();
     /* v2.58: lista de gemelos que manda el servidor cuando hay encaje
        ambiguo (si no viene, vacía) */
     asistenteBias.alternativas = Array.isArray(d.alternativas) ? d.alternativas : [];
@@ -5888,7 +5985,9 @@ function conciertoSalir() {
   document.documentElement.style.removeProperty('--zoom-concierto');
 }
 
-function alternarConcierto() { conciertoEnMarcha ? conciertoSalir() : conciertoAbrir(); }
+/* v2.87: "alternarConcierto" fuera de servicio — envoltorio que nadie
+   llamó nunca (el menú 🎭 va directo a conciertoAbrir y el ✕/Escape
+   a conciertoSalir). Se quita por la auditoría de código muerto. */
 
 /* Los mandos flotantes se VAN al estar quietos y VUELVEN al tocar
    la pantalla (mover el dedo o ratón, o tocar) */
@@ -6407,6 +6506,10 @@ function prepararEditor(modal, titulo, artista, texto) {
   document.getElementById('editor-titulo-modal').textContent = modal;
   document.getElementById('editor-titulo').value = titulo;
   document.getElementById('editor-artista').value = artista;
+  /* v2.90: BPM guardado en esta canción, si lo tiene */
+  const bpmDeLaFicha = (editorModo.tipo === 'mia' && misCanciones[editorModo.id])
+    ? parseInt(misCanciones[editorModo.id].bpm, 10) : NaN;
+  document.getElementById('editor-bpm').value = (bpmDeLaFicha >= 30) ? bpmDeLaFicha : '';
   document.getElementById('editor-texto').value = texto;
   /* nº de preset de Bias guardado en esta canción, si lo tiene */
   const edPreset = document.getElementById('editor-preset');
@@ -7804,6 +7907,9 @@ let metColaVisual = [];       /* clics programados, a la espera de pintarse */
 const MET_ADELANTE = 0.12;    /* programar los clics con 120 ms de ventaja (estándar WebAudio) */
 
 function metronomoAbrir() {
+  /* v2.90: si la canción abierta trae su BPM, el metrónomo arranca con ese tempo */
+  const bpmCancion = bpmDeCancion();
+  if (bpmCancion) document.getElementById('met-bpm').value = bpmCancion;
   const mascara = document.getElementById('met-mascara');
   mascara.classList.add('abierto');
   metPintarDots();   /* corazoncitos al número de tiempos actual */
@@ -8088,6 +8194,13 @@ function guardarDesdeEditor() {
   const titulo  = document.getElementById('editor-titulo').value.trim();
   const artista = document.getElementById('editor-artista').value.trim();
   const texto   = document.getElementById('editor-texto').value.trim();
+  /* v2.90: el BPM es opcional; si está, tiene que ser 30–240 */
+  const bpmVal  = document.getElementById('editor-bpm').value.trim();
+  let bpmN = NaN;
+  if (bpmVal !== '') {
+    bpmN = parseInt(bpmVal, 10);
+    if (isNaN(bpmN) || bpmN < 30 || bpmN > 240) { alert('El BPM tiene que ser un número entre 30 y 240.'); return; }
+  }
   if (!texto) { alert('Escribe la letra con acordes antes de guardar.'); return; }
   /* Si se REEMPLAZA una canción tuya, se conserva su id (las listas
      que la incluyan no se rompen); si es nueva, id recién fundido */
@@ -8103,6 +8216,9 @@ function guardarDesdeEditor() {
   });
   if (presetVal !== '') cancion.presetBias = presetVal;   /* nombre, tal cual lo lee el asistente */
   else if (anterior) delete cancion.presetBias;   /* si estaba, se quita al vaciar el campo */
+  /* v2.90: BPM de la canción (se guarda con su ficha) */
+  if (!isNaN(bpmN)) cancion.bpm = bpmN;
+  else if (anterior) delete cancion.bpm;
   if (editorModo.tipo === 'mia') misCanciones[editorModo.id] = cancion;
   else misCanciones.unshift(cancion);
   guardarAlmacen();
