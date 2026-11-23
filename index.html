@@ -490,6 +490,14 @@
     color: var(--texto);
   }
   .cabeza-siguiente .art::before { content: ' \00b7 '; }  /* "título · artista" */
+  /* v2.90 · el tempo va a la IZQUIERDA del título (bloque espejo de
+     "Siguiente"): así no roba ni una línea de alto en la pantalla */
+  .cabeza-bpm {
+    display: inline-block;
+    text-align: right;
+    border-right: 1px solid var(--borde);
+    padding-right: 24px;
+  }
   #letra .cabeza-cancion h2 {
     margin: 0 0 4px;
     font-size: var(--tam-titulo, 26px);
@@ -506,7 +514,7 @@
      editarlo ahí mismo (Enter guarda, Escape deja lo de antes) */
   .bpm-cancion {
     display: inline-block;
-    margin-top: 9px;
+    margin-top: 0;
     padding: 2px 12px 3px;
     border: 1px solid var(--borde);
     border-radius: 999px;
@@ -1443,6 +1451,67 @@
   }
   .muestra-tamano { line-height: 1; margin-left: auto; margin-right: 6px; }
 
+  /* ---------- Editor de diagramas de acordes (v2.93) ---------- */
+  #ed-diag-mascara {
+    position: fixed;
+    inset: 0;
+    z-index: 59;
+    background: rgba(0, 0, 0, 0.55);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 18px;
+  }
+  #ed-diag-mascara.abierto { display: flex; }
+  #ed-diag-panel {
+    background: var(--panel);
+    border: 1px solid var(--borde);
+    border-radius: 14px;
+    width: min(760px, 97vw);
+    max-height: min(760px, 94vh);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+  }
+  #ed-diag-cuerpo {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px 18px 20px;
+    display: grid;
+    grid-template-columns: minmax(300px, 1fr) 190px;
+    gap: 18px;
+  }
+  @media (max-width: 640px) {
+    #ed-diag-cuerpo { grid-template-columns: 1fr; }
+  }
+  .diag-config { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 4px 0 12px; }
+  .diag-config label { color: var(--texto-suave); font-size: 13px; }
+  .diag-config input[type="text"] {
+    background: var(--fondo); color: var(--texto); border: 1px solid var(--borde);
+    border-radius: 8px; padding: 6px 9px; width: 110px; font-size: 15px;
+  }
+  .diag-tabla { border-collapse: collapse; margin: 6px 0 12px; }
+  .diag-tabla th, .diag-tabla td { text-align: center; padding: 2px; }
+  .diag-tabla th { color: var(--texto-suave); font-size: 12px; font-weight: 500; padding: 2px 6px; }
+  .diag-tabla td.etq { text-align: right; color: var(--texto-suave); font-size: 12px; padding-right: 8px; }
+  .diag-tabla button {
+    width: 34px; height: 30px; border: 1px solid var(--borde); border-radius: 6px;
+    background: var(--fondo); color: var(--texto); cursor: pointer; font-size: 13px;
+  }
+  .diag-tabla button:hover { border-color: var(--acorde); }
+  .diag-tabla button.sel { background: var(--acorde); color: #06171a; border-color: var(--acorde); font-weight: 700; }
+  .diag-lista { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .diag-lista .diagrama { cursor: default; }
+  .diag-lista .diagrama.mini svg { width: 74px; height: auto; }
+  .diag-preview {
+    border: 1px solid var(--borde); border-radius: 10px; padding: 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    align-self: start; background: var(--fondo);
+  }
+  .diag-preview svg { width: 150px; height: auto; }
+  .diag-preview .nombre { font-size: 17px; font-weight: 700; color: var(--acorde); }
+
   /* ---------- Panel de ESCUCHA MIDI de Bias FX2 (v2.8) ---------- */
   #ed-midi-mascara {
     position: fixed;
@@ -2102,6 +2171,7 @@ try {
       <div class="menu-seccion">Aspecto y ajustes</div>
       <button class="menu-item" onclick="abrirEditorPartes(); cerrarMenu()">🎨 &nbsp;Estilo de etiquetas y partes…</button>
       <button class="menu-item" onclick="abrirEditorTamanios(); cerrarMenu()">🖋 &nbsp;Fuente y tamaños de texto…</button>
+      <button class="menu-item" onclick="abrirEditorDiagramas(); cerrarMenu()">🎸 &nbsp;Editar diagramas de acordes…</button>
       <button class="menu-item" onclick="alternarTema(); cerrarMenu()">◐ &nbsp;modo claro / oscuro</button>
       <button class="menu-item" onclick="atajosAbrir(); cerrarMenu()">⌨ &nbsp;Atajos de teclado…</button>
 
@@ -2217,7 +2287,7 @@ try {
   <!-- ===== DERECHA: diagramas de acordes ===== -->
   <aside id="diagramas">
     <button class="btn" id="cierra-diagramas" onclick="alternarPanel('diagramas')" title="Esconder los diagramas (la letra se queda con todo el ancho)">→</button>
-    <h3>Acordes de esta canción</h3>
+    <h3>Acordes de esta canción <button class="btn" onclick="abrirEditorDiagramas()" title="Editar diagramas">✎</button></h3>
     <div id="cuadros-chords"></div>
   </aside>
 </main>
@@ -2246,7 +2316,7 @@ try {
     <input id="editor-titulo" placeholder="Título de la canción" maxlength="80">
     <input id="editor-artista" placeholder="Artista" maxlength="80">
     <!-- v2.90: tempo de la canción (se ve en la cabecera como ♩ = 120) -->
-    <input id="editor-bpm" type="number" min="30" max="240" step="1" inputmode="numeric" placeholder="BPM de la canción (opcional) — el tempo para practicar" title="Pulsos por minuto (entre 30 y 240) · opcional">
+    <input id="editor-bpm" type="number" min="30" max="240" step="1" inputmode="numeric" placeholder="BPM de la canción (opcional) — el tempo para practicar y el de REAPER" title="Pulsos por minuto (entre 30 y 240) · opcional">
     <input id="editor-preset" list="lista-presets" placeholder="Preset de Bias FX 2 para esta canción (nombre tal cual sale en Bias — opcional)" maxlength="60">
     <datalist id="lista-presets"></datalist>
     <!-- v2.36: herramientas del editor -->
@@ -2497,6 +2567,20 @@ try {
   </div>
 </div>
 
+<div id="ed-diag-mascara">
+  <div id="ed-diag-panel">
+    <div class="cabecera-ed-lista">
+      <h3>🎸 Editar diagramas de acordes</h3>
+      <div class="grupo">
+        <button class="btn" onclick="diagNueva()">＋ Nueva</button>
+        <button class="btn positiva" onclick="diagGuardar()">✓ Guardar</button>
+        <button class="btn" onclick="cerrarEditorDiagramas()">✕ Cerrar</button>
+      </div>
+    </div>
+    <div id="ed-diag-cuerpo"></div>
+  </div>
+</div>
+
 <div id="ed-midi-mascara">
   <div id="ed-midi-panel">
     <div class="cabecera-ed-lista">
@@ -2519,7 +2603,7 @@ try {
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.90';
+const VERSION = '2.95';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -2839,8 +2923,8 @@ function normalizarSufijo(nombre) {
   return null;
 }
 
-/* Lista de formas posibles de un acorde (ya transportado si procede) */
-function formasDe(nombre, orig) {
+/* Lista de formas de FÁBRICA de un acorde (sin las dibujadas por ti) */
+function formasBase(nombre, orig) {
   /* 1 · ficha exacta del acorde (ya transportado) */
   const lista = DIGITACIONES[nombre];
   if (lista) return lista;
@@ -2876,6 +2960,19 @@ function formasDe(nombre, orig) {
   }
   /* 5 · generador de cejillas para cualquier raíz */
   return generarBarres(nombre);
+}
+
+/* Lista de formas posibles de un acorde: PRIMERO las que dibujaste tú
+   (v2.93), y después las de fábrica, para no perder las alternativas. */
+function formasDe(nombre, orig) {
+  const tuyas = [];
+  if (diagramasCustom[nombre] && diagramasCustom[nombre].length)
+    diagramasCustom[nombre].forEach(f => tuyas.push(f));
+  if (orig && orig !== nombre && diagramasCustom[orig] && diagramasCustom[orig].length)
+    diagramasCustom[orig].forEach(f => tuyas.push(f));
+  const fabrica = formasBase(nombre, orig) || [];
+  if (!tuyas.length) return fabrica.length ? fabrica : null;
+  return tuyas.concat(fabrica);
 }
 
 /* Dibuja la SILUETA de un acorde como SVG (a partir de una forma) */
@@ -2972,7 +3069,7 @@ function parsear(texto) {
 
 /* ============================================================
    v2.90 · BPM DE LA CANCIÓN — pastilla "♩ = 120" en la
-   cabecera (bajo el artista). Se guarda EN LA FICHA de la
+   cabecera, a la IZQUIERDA del título. Se guarda EN LA FICHA de la
    canción (campo bpm) así que viaja con ella en las copias de
    seguridad. Un clic la convierte en una cajita para escribirlo:
    Enter guarda, Escape deja lo de antes, borrarla lo quita.
@@ -2989,7 +3086,7 @@ function pastillaBpm() {
   chip.className = 'bpm-cancion' + (n ? ' puesto' : '');
   chip.textContent = '♩ = ' + (n || '—');
   chip.title = n
-    ? 'Tempo de esta canción: ' + n + ' BPM · clic para cambiarlo'
+    ? 'Tempo de esta canción: ' + n + ' BPM · clic para cambiarlo · si REAPER está abierto, también pone su tempo'
     : 'Pon el tempo (BPM) de esta canción · clic para escribirlo';
   chip.onclick = () => editarBpmCabeza(chip);
   return chip;
@@ -3033,8 +3130,38 @@ function editarBpmCabeza(chip) {
   inp.addEventListener('click', (ev) => ev.stopPropagation());
 }
 
+/* ============================================================
+   v2.91 · EL BPM MANDA EN REAPER — puente con el programa
+   El programa de escritorio (el asistente del puerto 8897) deja el
+   BPM de la canción abierta en un fichero que lee un ReaScript de
+   REAPER: al abrir una canción (o cambiarle el tempo) REAPER pone
+   ese mismo tempo a su proyecto y a la precuenta del Pedal Looper.
+   Si la canción no tiene BPM se le dice al programa que quite el
+   pedido (REAPER se queda como estaba). Todo es local (127.0.0.1);
+   si el programa está cerrado, se ignora en silencio.
+   ============================================================ */
+const URL_BPM = 'http://127.0.0.1:8897/bpm';
+let ultimoBpmEnviado = { clave: '', cuando: 0 };
+
+function avisarReaperBpm() {
+  /* la clave junta canción y BPM: la canción se repinta muchas veces
+     por otros motivos y no hay que repetir el aviso sin cambio */
+  const clave = (cancionActual ? (cancionActual.id || '') : '') + '|' + bpmDeCancion();
+  if (clave === ultimoBpmEnviado.clave) return;
+  ultimoBpmEnviado = { clave: clave, cuando: Date.now() };
+  try {
+    fetch(URL_BPM, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: 'bpm=' + bpmDeCancion(),   /* 0 = esta canción no lleva tempo */
+      keepalive: true
+    }).catch(() => { });
+  } catch (e) { /* sin el programa abierto no hay nada que hacer */ }
+}
+
 /* Pinta la canción actual en la zona central */
 function pintarCancion() {
+  avisarReaperBpm();   /* v2.91: el tempo de esta canción manda en REAPER */
   const cont = document.getElementById('letra');
   cont.innerHTML = '';
   if (!cancionActual) {
@@ -3078,9 +3205,13 @@ function pintarCancion() {
       p.textContent = artista;
       act.appendChild(p);
     }
-    /* v2.90: tempo de la canción, bajo el artista */
-    act.appendChild(pastillaBpm());
     cab.appendChild(act);
+    /* v2.90 · ajuste: el tempo va a la IZQUIERDA del título (a la
+       derecha ya está "Siguiente") — no quita espacio de pantalla */
+    const cajaBpm = document.createElement('div');
+    cajaBpm.className = 'cabeza-bpm';
+    cajaBpm.appendChild(pastillaBpm());
+    cab.insertBefore(cajaBpm, act);
     /* ¿quién va después? — sólo si HAY lista abierta, la canción está
        dentro de ella y no es la última */
     let siguiente = null;
@@ -3684,6 +3815,18 @@ function construirLinea(texto) {
    PARTE 5 · Acciones de la interfaz
    ============================================================ */
 let cancionActual = null, transporte = 0;
+
+/* v2.95: el tono (cejilla) se recuerda POR CANCIÓN, por id, como las
+   digitaciones elegidas. Así aguanta al cerrar/abrir y aunque reordenen
+   la biblioteca. Se guarda en la copia de seguridad con el resto. */
+const CLAVE_TONOS = 'guitarra-nvz-tonos';
+let tonosCanciones = {};
+try { tonosCanciones = JSON.parse(localStorage.getItem(CLAVE_TONOS) || '{}') || {}; }
+catch (e) { tonosCanciones = {}; }
+function guardarTonos() {
+  try { localStorage.setItem(CLAVE_TONOS, JSON.stringify(tonosCanciones)); }
+  catch (e) { /* sin almacén: el tono dura solo esta sesión */ }
+}
 
 /* ---------- Fuente de la LETRA (v2.14) ----------
    Catálogo de fuentes. (v2.41) Además de las que venían ya en
@@ -5067,11 +5210,26 @@ async function preguntarAsistente() {
 function ponerAsistenteEnMarcha() {
   preguntarAsistente();                        /* ya mismo */
   pintarBibliotecaPresets();                   /* sugerencias del editor */
-  setInterval(preguntarAsistente, 2000);       /* y cada 2 segundos */
+  setInterval(preguntarAsistente, 1000);       /* y cada segundo (v2.92: antes 2 s, se notaba lento) */
 }
 
 /* ---------- Tamaño de los DIAGRAMAS de acordes ---------- */
 let tamanoDiagrama = 132;   /* px de ancho de cada dibujo */
+
+/* ===== v2.93: diagramas HECHOS POR TI =====
+   Guardamos las digitaciones que dibujas en el editor. Es un catálogo
+   GLOBAL (para todas las canciones), con el mismo formato que el catálogo
+   de fábrica: { 'C': [ { base:0, trastes:['x','3','2','0','1','0'] } ] }.
+   Se anteponen a las de fábrica, así la tuya es la que sale por defecto
+   sin quitarte las demás opciones del selector. */
+const CLAVE_DIAGRAMAS = 'guitarra-nvz-diagramas';
+let diagramasCustom = {};
+try { diagramasCustom = JSON.parse(localStorage.getItem(CLAVE_DIAGRAMAS) || '{}') || {}; }
+catch (e) { diagramasCustom = {}; }
+function guardarDiagramas() {
+  try { localStorage.setItem(CLAVE_DIAGRAMAS, JSON.stringify(diagramasCustom)); }
+  catch (e) { console.warn('No se pudieron guardar tus diagramas', e); }
+}
 
 function aplicarTamanoDiagrama() {
   document.documentElement.style.setProperty('--tam-diagrama', tamanoDiagrama + 'px');
@@ -5115,12 +5273,26 @@ function actualizarChip() {
 }
 
 function transportar(n) {
-  transporte += n;
+  transporte = Math.max(-12, Math.min(12, transporte + n));
+  guardarTonoActual();
   actualizarChip();
   pintarCancion();
   pintarDiagramas();
 }
-function resetTransporte() { transporte = 0; actualizarChip(); pintarCancion(); pintarDiagramas(); }
+function resetTransporte() {
+  transporte = 0;
+  guardarTonoActual();
+  actualizarChip();
+  pintarCancion();
+  pintarDiagramas();
+}
+/* Guarda el tono de la canción abierta (0 = quitar el recuerdo) */
+function guardarTonoActual() {
+  if (!cancionActual || !cancionActual.id) return;
+  if (transporte === 0) delete tonosCanciones[cancionActual.id];
+  else tonosCanciones[cancionActual.id] = transporte;
+  guardarTonos();
+}
 
 function alternarTema() {
   document.body.classList.toggle('tema-claro');
@@ -5473,7 +5645,8 @@ async function componerCopia() {
     copia.aspecto = {};
     [
       CLAVE_VISTA, CLAVE_PARTES, CLAVE_FUENTES, CLAVE_ZOOM, CLAVE_ORDEN,
-      ATAJOS_CLAVE, CLAVE_MIDI, 'guitarra-nvz-bias-elegidos', 'guitarra-nvz-presets'
+      ATAJOS_CLAVE, CLAVE_MIDI, 'guitarra-nvz-bias-elegidos', 'guitarra-nvz-presets',
+      CLAVE_DIAGRAMAS, CLAVE_CANCION_ACTUAL, CLAVE_TONOS
     ].forEach(clave => {
       try {
         const valor = localStorage.getItem(clave);
@@ -6240,8 +6413,239 @@ function abrirSelector(nombre, orig, x, y) {
   pie.innerHTML += '<small>clic fuera = cerrar</small>';
   pop.appendChild(pie);
 
+  const editar = document.createElement('button');
+  editar.className = 'btn';
+  editar.textContent = '✎ Editar diagrama';
+  editar.title = 'Dibuja tu propia digitación para este acorde';
+  editar.onclick = (ev) => { ev.stopPropagation(); cerrarSelector(); abrirEditorDiagramas(nombre, orig); };
+  pie.appendChild(editar);
+
   document.body.appendChild(pop);
   document.addEventListener('click', alPulsarFueraDelSelector, true);
+}
+
+/* ============================================================
+   v2.93 · EDITOR DE DIAGRAMAS DE ACORDES
+   Puedes dibujar tu digitación: cuerda por cuerda, traste a traste,
+   con "base" (primer traste visible) para acordes en posiciones altas.
+   Se guarda en CLAVE_DIAGRAMAS y se usa en TODAS las canciones.
+   ============================================================ */
+let diagEdit = null;
+const DIAG_CUERDAS = ['E', 'A', 'D', 'G', 'B', 'e'];
+
+function diagVacia() { return { base: 0, trastes: ['x','x','x','x','x','x'] }; }
+
+function diagPrimerAcorde() {
+  if (cancionActual && !cancionActual.esGp && cancionActual.texto) {
+    const rx = /\[([^\[\]]+)\]/g;
+    let m;
+    while ((m = rx.exec(cancionActual.texto)) !== null) {
+      const t = m[1].trim();
+      if (esAcordeReal(t)) return transportarAcorde(t, transporte);
+    }
+  }
+  return 'C';
+}
+
+function diagNormalizaForma(f) {
+  if (!f) return diagVacia();
+  const trastes = (f.trastes || []).slice(0, 6).map(v => String(v));
+  while (trastes.length < 6) trastes.push('x');
+  return { base: Math.max(0, Math.min(24, parseInt(f.base, 10) || 0)), trastes };
+}
+
+function abrirEditorDiagramas(nombre, orig) {
+  const nom = String(nombre || diagPrimerAcorde() || 'C').trim();
+  const propias = diagramasCustom[nom] || [];
+  let forma = null, indice = -1;
+  if (propias.length) { forma = propias[0]; indice = 0; }
+  else {
+    const fabrica = formasBase(nom, orig || nom);
+    if (fabrica && fabrica.length) forma = fabrica[0];
+  }
+  diagEdit = Object.assign({ nombre: nom, orig: orig || nom, indice }, diagNormalizaForma(forma));
+  refrescarEditorDiagramas();
+  document.getElementById('ed-diag-mascara').classList.add('abierto');
+}
+
+function cerrarEditorDiagramas() {
+  document.getElementById('ed-diag-mascara').classList.remove('abierto');
+  diagEdit = null;
+}
+
+function diagFormaActual() {
+  return { base: diagEdit.base, trastes: diagEdit.trastes.slice() };
+}
+
+function diagPoner(c, valor) {
+  if (!diagEdit) return;
+  diagEdit.trastes[c] = String(valor);
+  refrescarEditorDiagramas();
+}
+
+function diagCelda(c, r) {
+  if (!diagEdit) return;
+  const traste = String(Math.max(diagEdit.base, 1) + r);
+  diagEdit.trastes[c] = (diagEdit.trastes[c] === traste) ? 'x' : traste;
+  refrescarEditorDiagramas();
+}
+
+function diagBase(delta) {
+  if (!diagEdit) return;
+  const nueva = Math.max(0, Math.min(24, diagEdit.base + delta));
+  const cambio = nueva - diagEdit.base;
+  diagEdit.base = nueva;
+  if (cambio) {
+    diagEdit.trastes = diagEdit.trastes.map(tr => {
+      if (tr === 'x' || tr === '0') return tr;
+      const n = parseInt(tr, 10);
+      return isFinite(n) ? String(Math.max(1, Math.min(24, n + cambio))) : tr;
+    });
+  }
+  refrescarEditorDiagramas();
+}
+
+function diagCejilla() {
+  if (!diagEdit) return;
+  const t = String(Math.max(1, diagEdit.base));
+  diagEdit.trastes = diagEdit.trastes.map(() => t);
+  refrescarEditorDiagramas();
+}
+
+function diagNombre(valor) {
+  if (!diagEdit) return;
+  diagEdit.nombre = (valor || '').trim();
+  refrescarEditorDiagramas();
+}
+
+function diagNueva() {
+  if (!diagEdit) return;
+  diagEdit.indice = -1;
+  diagEdit.trastes = Array(6).fill('x');
+  refrescarEditorDiagramas();
+}
+
+function diagEditarForma(i) {
+  if (!diagEdit) return;
+  const f = (diagramasCustom[diagEdit.nombre] || [])[i];
+  if (!f) return;
+  Object.assign(diagEdit, diagNormalizaForma(f), { indice: i });
+  refrescarEditorDiagramas();
+}
+
+function diagBorrar() {
+  if (!diagEdit) return;
+  const nom = diagEdit.nombre.trim();
+  const lista = diagramasCustom[nom] || [];
+  if (diagEdit.indice < 0 || diagEdit.indice >= lista.length) return;
+  lista.splice(diagEdit.indice, 1);
+  if (lista.length) diagramasCustom[nom] = lista; else delete diagramasCustom[nom];
+  guardarDiagramas();
+  diagEdit.indice = -1;
+  refrescarEditorDiagramas();
+  pintarDiagramas();
+}
+
+function diagGuardar() {
+  if (!diagEdit) return;
+  const nom = diagEdit.nombre.trim();
+  if (!nom) { alert('Escribe el nombre del acorde (C, F#m, G/B…)'); return; }
+  const forma = diagFormaActual();
+  const lista = diagramasCustom[nom] ? diagramasCustom[nom].slice() : [];
+  if (diagEdit.indice >= 0 && diagEdit.indice < lista.length) lista[diagEdit.indice] = forma;
+  else lista.push(forma);
+  diagramasCustom[nom] = lista;
+  guardarDiagramas();
+  diagEdit.nombre = nom;
+  diagEdit.indice = lista.length - 1;
+  refrescarEditorDiagramas();
+  pintarDiagramas();
+  resaltarAcorde(null);
+}
+
+function refrescarEditorDiagramas() {
+  if (!diagEdit) return;
+  const cuerpo = document.getElementById('ed-diag-cuerpo');
+  const nom = diagEdit.nombre || '';
+  const propias = diagramasCustom[nom] || [];
+  const base = diagEdit.base;
+  const primera = Math.max(base, 1);
+
+  /* ---- columna izquierda: Configuración + rejilla ---- */
+  let h = '<div>';
+  h += '<div class="diag-config">'
+     + '<label for="diag-nombre">Acorde</label>'
+     + '<input id="diag-nombre" type="text" value="' + escaparHtml(nom)
+     + '" onchange="diagNombre(this.value)" onkeydown="if(event.key===\'Enter\')this.blur()">'
+     + '<span style="color:var(--texto-suave);font-size:12px">(el nombre que sale en la letra)</span>'
+     + '</div>';
+  h += '<div class="diag-config">'
+     + '<label>Primer traste / cejilla</label>'
+     + '<button class="btn" onclick="diagBase(-1)">−</button>'
+     + '<b style="min-width:26px;text-align:center">' + base + '</b>'
+     + '<button class="btn" onclick="diagBase(1)">＋</button>'
+     + '<button class="btn" onclick="diagCejilla()" title="Poner todas las cuerdas en el mismo traste">▬ Cejilla</button>'
+     + '</div>';
+  h += '<div style="color:var(--texto-suave);font-size:12px;margin:2px 0 6px">'
+     + 'Cuerdas de izquierda a derecha: <b>E A D G B e</b>. Clic en una casilla para poner el dedo; clic otra vez para quitarlo. '
+     + (base > 1 ? 'El dibujo empieza en el traste <b>' + base + '</b>.' : 'Con 0 el dibujo empieza al aire.')
+     + '</div>';
+
+  h += '<table class="diag-tabla"><tr><th></th>';
+  DIAG_CUERDAS.forEach(c => { h += '<th>' + c + '</th>'; });
+  h += '</tr>';
+  h += '<tr><td class="etq">Muda ✕</td>';
+  DIAG_CUERDAS.forEach((c, i) => {
+    h += '<td><button class="' + (diagEdit.trastes[i] === 'x' ? 'sel' : '')
+       + '" onclick="diagPoner(' + i + ',\'x\')" title="Esta cuerda no suena">✕</button></td>';
+  });
+  h += '</tr>';
+  h += '<tr><td class="etq">Aire ○</td>';
+  DIAG_CUERDAS.forEach((c, i) => {
+    h += '<td><button class="' + (diagEdit.trastes[i] === '0' ? 'sel' : '')
+       + '" onclick="diagPoner(' + i + ',\'0\')" title="Cuerda al aire">○</button></td>';
+  });
+  h += '</tr>';
+  for (let r = 0; r < 4; r++) {
+    const traste = String(primera + r);
+    h += '<tr><td class="etq">traste ' + traste + '</td>';
+    DIAG_CUERDAS.forEach((c, i) => {
+      h += '<td><button class="' + (diagEdit.trastes[i] === traste ? 'sel' : '')
+         + '" onclick="diagCelda(' + i + ',' + r + ')" title="' + c + ' · traste ' + traste + '">'
+         + (diagEdit.trastes[i] === traste ? traste : '·') + '</button></td>';
+    });
+    h += '</tr>';
+  }
+  h += '</table>';
+
+  h += '<div class="diag-config">'
+     + '<button class="btn positiva" onclick="diagGuardar()">✓ Guardar este diagrama</button>'
+     + (diagEdit.indice >= 0 ? '<button class="btn" onclick="diagBorrar()">🗑 Borrar esta digitación</button>'
+        : '<span style="color:var(--texto-suave);font-size:12px">Guardando como digitación nueva</span>')
+     + '</div>';
+  h += '<div style="color:var(--texto-suave);font-size:12px;margin-top:10px">'
+     + 'Tus digitaciones guardadas para <b>' + escaparHtml(nom) + '</b> (se añaden a las de fábrica):</div>';
+  h += '<div class="diag-lista">';
+  if (!propias.length) h += '<small style="color:var(--texto-suave)">Ninguna todavía</small>';
+  propias.forEach((f, i) => {
+    h += '<div class="diagrama mini' + (i === diagEdit.indice ? ' activa' : '') + '">'
+       + svgForma(f)
+       + '<div style="display:flex;gap:4px;justify-content:center;margin-top:2px">'
+       + '<button class="btn" onclick="diagEditarForma(' + i + ')" title="Editar">✎</button>'
+       + '<button class="btn" onclick="diagEditarForma(' + i + ');diagBorrar()" title="Borrar">🗑</button>'
+       + '</div></div>';
+  });
+  h += '</div></div>';
+
+  /* ---- columna derecha: vista previa ---- */
+  h += '<div class="diag-preview"><div class="nombre">' + escaparHtml(nom || '—') + '</div>'
+     + svgForma(diagFormaActual())
+     + '<small style="color:var(--texto-suave);text-align:center">'
+     + (base > 1 ? 'cejilla desde el traste ' + base : 'sin cejilla')
+     + '<br>' + diagEdit.trastes.map((t, i) => DIAG_CUERDAS[i] + ':' + t).join(' · ')
+     + '</small></div>';
+
+  cuerpo.innerHTML = h;
 }
 
 /* ============================================================
@@ -8516,6 +8920,7 @@ document.addEventListener('keydown', (ev) => {
     if (edListaAbierto) { cerrarEditorLista(); return; }   /* cierra sin guardar */
     if (document.getElementById('ed-partes-mascara').classList.contains('abierto')) { cerrarEditorPartes(); return; }
     if (document.getElementById('ed-tamanios-mascara').classList.contains('abierto')) { cerrarEditorTamanios(); return; }
+    if (document.getElementById('ed-diag-mascara').classList.contains('abierto')) { cerrarEditorDiagramas(); return; }
     if (document.getElementById('ed-midi-mascara').classList.contains('abierto')) { cerrarEditorMidi(); return; }
     /* v2.53: el metrónomo también se cierra con Escape */
     if (document.getElementById('met-mascara').classList.contains('abierto')) { metronomoCerrar(); return; }
@@ -8702,6 +9107,9 @@ window.addEventListener('drop', (ev) => {
    ============================================================ */
 /* ---------- Pestañas: ¿qué muestra la biblioteca? ---------- */
 const CLAVE_PESTAÑA = 'guitarra-nvz-pestaña';
+/* v2.94: recordar la canción en la que te quedaste (por id, no por
+   índice: así aguanta aunque cambies el orden o borres canciones) */
+const CLAVE_CANCION_ACTUAL = 'guitarra-nvz-cancion-actual';
 let pestañaActual = 'canciones';
 
 function ponerPestaña(p) {
@@ -8999,7 +9407,13 @@ function seleccionarCancion(i) {
   ocultarReproductor();   /* v2.24: la pista de la canción ANTERIOR se para */
   cancionSel = i;
   cancionActual = TODAS()[i];
-  transporte = 0;
+  /* v2.94: guardar cuál estás viendo para volver a abrirla al arrancar */
+  try { if (cancionActual && cancionActual.id) localStorage.setItem(CLAVE_CANCION_ACTUAL, cancionActual.id); }
+  catch (e) { /* sin almacén: simplemente no se recuerda */ }
+  /* v2.95: recuperar el tono que tenía esta canción */
+  const tonoGuardado = cancionActual && cancionActual.id ? tonosCanciones[cancionActual.id] : 0;
+  transporte = (typeof tonoGuardado === 'number' && isFinite(tonoGuardado))
+    ? Math.max(-12, Math.min(12, tonoGuardado)) : 0;
   actualizarChip();
   /* v2.71: el visor de Guitar Pro no puede quedarse FLOTANDO encima
      enseñando la canción ANTERIOR cuando navegas (↑/↓, pedales, clic):
@@ -9097,7 +9511,17 @@ if (window.ResizeObserver) {
 }
 
 pintarBiblioteca();
-seleccionarCancion(0);
+/* v2.94: abrir la canción en la que te quedaste la última vez (por id).
+   Si la borraste o ya no está, abrimos la primera de siempre. */
+let arranqueSel = 0;
+try {
+  const idUltima = localStorage.getItem(CLAVE_CANCION_ACTUAL);
+  if (idUltima) {
+    const pos = TODAS().findIndex(c => c && c.id === idUltima);
+    if (pos >= 0) arranqueSel = pos;
+  }
+} catch (e) { /* nada */ }
+seleccionarCancion(arranqueSel);
 </script>
 </body>
 </html>
