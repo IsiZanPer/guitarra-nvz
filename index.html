@@ -2603,7 +2603,7 @@ try {
    entran por "Nueva canción" o "Importar".
    ============================================================ */
 /* Versión del programa: se sube con cada ronda de cambios nuevas */
-const VERSION = '2.95';
+const VERSION = '2.99';
 
 /* Ya NO hay canciones de ejemplo incorporadas (se quitaron en v2.2
    a petición del usuario). El array queda vacío: TODAS() es
@@ -8952,13 +8952,18 @@ document.addEventListener('keydown', (ev) => {
        (la tecla asignada a cada cosa se cambia en el panel de
        atajos, que se abre con «ayuda» o el menú 🎛 Vista)
        ============================================================ */
+    /* v2.99: mientras suena la pista de acompañamiento NO cambiamos de
+       canción con el teclado. El pedal del looper a veces manda la tecla
+       ↓/↑ y eso paraba la pista y saltaba a la canción siguiente. Para
+       cambiar de canción, usa la lista (clic) o para la pista primero. */
+    const pistaSonando = !!(audioPista && audioPista.src && !audioPista.paused);
     if (coincideAtajo(ev, 'cancSig')) {
       ev.preventDefault();
-      canciónSiguiente(+1);
+      if (!pistaSonando) canciónSiguiente(+1);
     }
     else if (coincideAtajo(ev, 'cancAnt')) {
       ev.preventDefault();
-      canciónSiguiente(-1);
+      if (!pistaSonando) canciónSiguiente(-1);
     }
     else if (coincideAtajo(ev, 'panSig') && esApaisado()) {
       ev.preventDefault();
